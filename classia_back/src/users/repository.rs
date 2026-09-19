@@ -7,15 +7,14 @@ pub struct UserRepository {
 }
 
 impl UserRepository {
-
     pub fn new(pool: sqlx::PgPool) -> Self {
         UserRepository { pool }
     }
 
     pub async fn get_user_by_id(&self, id_user: Uuid) -> Result<User, sqlx::Error> {
         let user = sqlx::query_as!(
-              User,
-              r#"
+            User,
+            r#"
               SELECT
                   id_user,
                   name,
@@ -29,13 +28,11 @@ impl UserRepository {
               FROM users
               WHERE id_user = $1
               "#,
-              id_user,
-          )
-          .fetch_one(&self.pool)
-          .await?;
+            id_user,
+        )
+        .fetch_one(&self.pool)
+        .await?;
 
         Ok(user)
     }
-    
 }
-
