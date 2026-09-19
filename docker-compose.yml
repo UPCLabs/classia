@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_DB: classia
       POSTGRES_USER: classia
@@ -8,7 +8,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U classia -d classia"]
       interval: 5s
@@ -22,7 +22,7 @@ services:
     environment:
       DATABASE_URL: postgres://classia:classia@postgres:5432/classia
     ports:
-      - "3000:3000"
+      - "5000:5000"
     depends_on:
       postgres:
         condition: service_healthy

@@ -15,6 +15,6 @@ RUN apt-get update \
 
 COPY --from=builder /app/target/release/classia_back /usr/local/bin/classia-back
 
-EXPOSE 3000
+EXPOSE 5000
 
 CMD ["classia-back"]

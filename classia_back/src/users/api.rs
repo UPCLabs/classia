@@ -8,7 +8,7 @@ use axum::{
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::users::{models::User, repository::UserRepository, service::UserService};
+use crate::users::{dto::UserResponseDto, repository::UserRepository, service::UserService};
 
 pub fn route(pool: PgPool) -> Router {
     let repository = UserRepository::new(pool);
@@ -19,14 +19,17 @@ pub fn route(pool: PgPool) -> Router {
         .with_state(service)
 }
 
+// Same here, we need to think, how to send templates of errores
+// On a easy way, [String as error, is not good, we need for example]
+// A Enum/struct that have HTTP code with custom error, or something like that
 async fn get_user_by_id(
     State(service): State<Arc<UserService>>,
     Path(id_user): Path<Uuid>,
-) -> Result<Json<User>, String> {
+) -> Result<Json<UserResponseDto>, String> {
     let user = service
         .get_user_by_id(id_user)
         .await
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| error)?;
 
-    Ok(Json(user))
+    Ok(Json(user.into()))
 }

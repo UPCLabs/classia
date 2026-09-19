@@ -8,7 +8,7 @@ CREATE TYPE user_role AS ENUM (
 );
 
 CREATE TABLE users (
-    id_user UUID PRIMARY KEY,
+    id UUID PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
     email VARCHAR(255) NOT NULL UNIQUE,
     password TEXT NOT NULL,
