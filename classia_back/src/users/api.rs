@@ -1,5 +1,4 @@
 use std::sync::Arc;
-
 use axum::{
     Json, Router,
     extract::{Path, State},
@@ -8,7 +7,7 @@ use axum::{
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::users::{dto::UserResponseDto, repository::UserRepository, service::UserService};
+use crate::{app_error::AppError, users::{dto::UserResponseDto, repository::UserRepository, service::UserService}};
 
 pub fn route(pool: PgPool) -> Router {
     let repository = UserRepository::new(pool);
@@ -25,11 +24,10 @@ pub fn route(pool: PgPool) -> Router {
 async fn get_user_by_id(
     State(service): State<Arc<UserService>>,
     Path(id_user): Path<Uuid>,
-) -> Result<Json<UserResponseDto>, String> {
+) -> Result<Json<UserResponseDto>, AppError> {
     let user = service
         .get_user_by_id(id_user)
-        .await
-        .map_err(|error| error)?;
+        .await?;
 
     Ok(Json(user.into()))
 }
