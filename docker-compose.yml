@@ -21,6 +21,7 @@ services:
       dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgres://classia:classia@postgres:5432/classia
+      PORT: 5000
     ports:
       - "5000:5000"
     depends_on:
