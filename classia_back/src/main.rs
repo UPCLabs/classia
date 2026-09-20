@@ -10,6 +10,7 @@ use crate::app_state::ClassiaState;
 mod app_state;
 mod users;
 mod util;
+mod app_error;
 
 async fn create_state() -> Result<ClassiaState, Box<dyn Error>> {
     let database_url = env::var("DATABASE_URL")?;
