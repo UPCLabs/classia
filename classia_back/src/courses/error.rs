@@ -1,6 +1,5 @@
+use crate::error::AppError;
 use axum::http::StatusCode;
-
-use crate::app_error::AppError;
 
 #[derive(Debug)]
 pub enum CourseError {
