@@ -40,7 +40,7 @@ impl From<UserError> for AppError {
                 eprintln!("InternalError: {}", detalle);
                 AppError {
                     status: StatusCode::INTERNAL_SERVER_ERROR,
-                    code: "HASHING_ERROR",
+                    code: "INTERNAL_ERROR",
                     message: "Error interno al procesar la solicitud".into(),
                 }
             }
