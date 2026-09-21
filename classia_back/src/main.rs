@@ -5,19 +5,21 @@ use tokio::net::TcpListener;
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
-use crate::app_state::ClassiaState;
+use crate::state::ClassiaState;
 
+mod app_error;
 mod app_state;
+mod courses;
 mod users;
 mod util;
-mod app_error;
 
 async fn create_state() -> Result<ClassiaState, Box<dyn Error>> {
     let database_url = env::var("DATABASE_URL")?;
     let pool = util::database::connect(&database_url).await?;
-    let user_service = Arc::new(users::build_service(pool));
+    let user_service = Arc::new(users::build_service(pool.clone()));
+    let course_service = Arc::new(courses::build_service(pool));
 
-    Ok(ClassiaState::new(user_service))
+    Ok(ClassiaState::new(user_service, course_service))
 }
 
 #[tokio::main]
@@ -42,6 +44,7 @@ async fn main() {
     let app = Router::new()
         .route("/ping", get(ping))
         .nest("/users", users::route())
+        .nest("/courses", courses::route())
         .with_state(state);
 
     let listener = TcpListener::bind(&address).await.unwrap();
@@ -51,6 +54,6 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn ping() -> Result<&'static str, axum::http::StatusCode> {
-    Ok("Pong")
+async fn ping() -> &'static str {
+    "Pong"
 }
