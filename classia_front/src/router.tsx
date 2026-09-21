@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import LoginView from './views/LoginView'
+import ProfileView from './views/ProfileView'
 
 
 export default function Router() {
@@ -8,6 +9,7 @@ export default function Router() {
         <BrowserRouter>
             <Routes>
               <Route path='/auth/login' element={<LoginView />} />
+              <Route path='/profile' element={<ProfileView/>} />
             </Routes>
         </BrowserRouter>
     )
