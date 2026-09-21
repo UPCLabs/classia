@@ -7,7 +7,7 @@ use crate::users::UserRole;
 pub(crate) struct Claims {
     pub sub: Uuid,
     pub role: UserRole,
-    pub iat: u64,
-    pub exp: u64,
+    pub iat: i64,
+    pub exp: i64,
     pub iss: String,
 }

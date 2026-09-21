@@ -44,14 +44,20 @@ impl UserService {
         };
 
         body.validate().map_err(|errors| {
-            let mensaje = errors
+            let message = errors
                 .field_errors()
-                .values()
-                .next()
-                .and_then(|field_errors| field_errors.first())
-                .and_then(|error| error.message.clone())
-                .unwrap_or_else(|| "Datos inválidos".into());
-            UserError::ValidationError(mensaje.to_string())
+                .iter()
+                .flat_map(|(field, field_errors)| {
+                    field_errors.iter().map(move |error| {
+                        let msg = error.message.as_deref().unwrap_or("Dato inválido");
+
+                        format!("{field}: {msg}")
+                    })
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            UserError::ValidationError(message)
         })?;
 
         if self

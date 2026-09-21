@@ -1,4 +1,5 @@
-use jsonwebtoken::{DecodingKey, EncodingKey};
+use chrono::Utc;
+use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use uuid::Uuid;
 
 use crate::{
@@ -30,10 +31,38 @@ impl JwtService {
     }
 
     pub fn generate(&self, user_id: Uuid, role: UserRole) -> Result<String, AuthError> {
-        todo!()
+        let issued_at = Utc::now().timestamp();
+
+        let claims = Claims {
+            sub: user_id,
+            role: role,
+            iat: issued_at,
+            exp: issued_at + self.expiration_secs,
+            iss: self.issuer.clone(),
+        };
+
+        encode(&Header::new(Algorithm::HS256), &claims, &self.encoding_key)
+            .map_err(|_| AuthError::InternalError("Fail to generate JWT???".to_string()))
     }
 
     pub fn validate(&self, token: String) -> Result<Claims, AuthError> {
-        todo!()
+        let mut validation = Validation::new(Algorithm::HS256);
+
+        validation.set_issuer(&[self.issuer.as_str()]);
+        validation.set_required_spec_claims(&["sub", "iat", "exp", "iss"]);
+        validation.validate_exp = true;
+
+        decode::<Claims>(token, &self.decoding_key, &validation)
+            .map(|data| data.claims)
+            .map_err(|error| {
+                use jsonwebtoken::errors::ErrorKind;
+
+                match error.kind() {
+                    ErrorKind::ExpiredSignature => {
+                        AuthError::InternalError("Token expired".to_string())
+                    }
+                    _ => AuthError::InternalError("Token invalid".to_string()),
+                }
+            })
     }
 }

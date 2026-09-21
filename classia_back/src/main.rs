@@ -7,9 +7,10 @@ use tracing_subscriber::EnvFilter;
 
 use crate::state::ClassiaState;
 
-mod app_error;
-mod app_state;
+mod auth;
 mod courses;
+mod error;
+mod state;
 mod users;
 mod util;
 

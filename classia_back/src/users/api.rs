@@ -5,7 +5,11 @@ use axum::{
 };
 use uuid::Uuid;
 
-use crate::{error::AppError, state::ClassiaState, users::dto::UserResponseDto};
+use crate::{
+    error::AppError,
+    state::ClassiaState,
+    users::dto::{UserCreateDto, UserResponseDto},
+};
 
 pub fn route() -> Router<ClassiaState> {
     Router::new()
