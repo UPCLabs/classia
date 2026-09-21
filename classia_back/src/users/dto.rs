@@ -49,3 +49,35 @@ pub struct UserCreateDto {
 
     pub role: UserRole,
 }
+
+#[derive(Debug, Deserialize, Validate)]
+pub struct ChangePasswordDto {
+    #[validate(length(
+        min = 8,
+        max = 20,
+        message = "La contraseña debe tener entre 8 y 20 caracteres"
+    ))]
+    pub current_password: String,
+
+    #[validate(length(
+        min = 8,
+        max = 20,
+        message = "La contraseña debe tener entre 8 y 20 caracteres"
+    ))]
+    pub new_password: String,
+}
+
+#[derive(Debug, Deserialize, Validate)]
+pub struct UpdateUserDto {
+    #[validate(length(
+        min = 1,
+        max = 100,
+        message = "El nombre debe tener entre 1 y 100 caracteres"
+    ))]
+    pub name: Option<String>,
+
+    #[validate(email(message = "Correo inválido"))]
+    pub email: Option<String>,
+
+    pub role: Option<UserRole>,
+}
