@@ -65,8 +65,8 @@ impl UserRepository {
     pub async fn insert_user( &self, name: &str, email: &str, password_hash: &str, role: UserRole,) -> Result<User, sqlx::Error> {
     let user = query_as::<_, User>(
         r#"
-        INSERT INTO users (id, name, email, password, role, status, token, created_at, updated_at)
-        VALUES (gen_random_uuid(), $1, $2, $3, $4, 'active', '', now(), now())
+        INSERT INTO users (name, email, password, role, status, token)
+        VALUES ( $1, $2, $3, $4, 'active', '')
         RETURNING
             id,
             name,

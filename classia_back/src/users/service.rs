@@ -39,16 +39,17 @@ impl UserService {
         let body = UserCreateDto {
             name: body.name.trim().to_string(),
             email: body.email.trim().to_string(),
-            ..body
+            password: body.password,
+            role: body.role,
         };
 
         body.validate().map_err(|errors| {
             let mensaje = errors
                 .field_errors()
                 .values()
-                .next() 
-                .and_then(|field_errors| field_errors.first()) 
-                .and_then(|error| error.message.clone()) 
+                .next()
+                .and_then(|field_errors| field_errors.first())
+                .and_then(|error| error.message.clone())
                 .unwrap_or_else(|| "Datos inválidos".into());
             UserError::ValidationError(mensaje.to_string())
         })?;
@@ -62,7 +63,8 @@ impl UserService {
             return Err(UserError::EmailAlreadyExists);
         }
 
-        let password_hash = hash_password(&body.password).map_err(|_| UserError::HashingError)?;
+        let password_hash = hash_password(&body.password)
+            .map_err(|error| UserError::InternalError(error.to_string()))?;
 
         self.user_repository
             .insert_user(&body.name, &body.email, &password_hash, body.role)
