@@ -5,7 +5,7 @@ use tokio::net::TcpListener;
 use tracing::{error, info};
 use tracing_subscriber::EnvFilter;
 
-use crate::app_state::ClassiaState;
+use crate::state::ClassiaState;
 
 mod app_error;
 mod app_state;
@@ -54,6 +54,6 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn ping() -> Result<&'static str, axum::http::StatusCode> {
-    Ok("Pong")
+async fn ping() -> &'static str {
+    "Pong"
 }

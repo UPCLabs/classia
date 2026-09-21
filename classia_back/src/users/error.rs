@@ -1,4 +1,4 @@
-use crate::app_error::AppError;
+use crate::error::AppError;
 use axum::http::StatusCode;
 
 #[derive(Debug)]
@@ -12,14 +12,14 @@ impl From<UserError> for AppError {
         match value {
             UserError::UserNotFound => AppError {
                 status: StatusCode::NOT_FOUND,
-                code: "USER_NOT_FOUND",
+                code: StatusCode::NOT_FOUND.as_str(),
                 message: "User not found".to_string(),
             },
             UserError::Database(error) => {
                 eprintln!("Database error: {}", error);
                 AppError {
                     status: StatusCode::INTERNAL_SERVER_ERROR,
-                    code: "DATABASE_ERROR",
+                    code: StatusCode::NOT_FOUND.as_str(),
                     message: "Database error".to_string(),
                 }
             }
