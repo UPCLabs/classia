@@ -23,8 +23,10 @@ CREATE TABLE courses (
     id UUID PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
     code VARCHAR(6) NOT NULL,
-    teacher_id VARCHAR(150) NOT NULL REFERENCES users(id),  
+    teacher_id UUID NOT NULL REFERENCES users(id),  
     password TEXT NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    quantity SMALLINT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

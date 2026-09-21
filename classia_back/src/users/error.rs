@@ -1,5 +1,5 @@
-use axum::http::StatusCode;
 use crate::app_error::AppError;
+use axum::http::StatusCode;
 
 #[derive(Debug)]
 pub enum UserError {

@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::users::{models::Course, repository::CourseRepository};
+use crate::courses::{error::CourseError, models::Course, repository::CourseRepository};
 
 pub struct CourseService {
     course_repositoy: CourseRepository,
@@ -23,7 +23,7 @@ impl CourseService {
             })
     }
 
-    pub async fn get_course_by_code(&self, course_code: Uuid) -> Result<Course, CourseError> {
+    pub async fn get_course_by_code(&self, course_code: String) -> Result<Course, CourseError> {
         self.course_repositoy
             .get_course_by_code(course_code)
             .await
@@ -42,6 +42,4 @@ impl CourseService {
                 error => CourseError::Database(error),
             })
     }
-
-   
 }

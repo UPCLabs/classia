@@ -22,6 +22,8 @@ impl CourseRepository {
                   code,
                   teacher_id,
                   password,
+                  status,
+                  quantity,
                   created_at,
                   updated_at
               FROM courses
@@ -35,7 +37,7 @@ impl CourseRepository {
         Ok(course)
     }
 
-    pub async fn get_course_by_code(&self, course_code: &str) -> Result<Course, sqlx::Error> {
+    pub async fn get_course_by_code(&self, course_code: String) -> Result<Course, sqlx::Error> {
         let course = query_as::<_, Course>(
             r#"
               SELECT
@@ -44,10 +46,12 @@ impl CourseRepository {
                   code,
                   teacher_id,
                   password,
+                  status,
+                  quantity,
                   created_at,
                   updated_at
               FROM courses
-              WHERE id = $1
+              WHERE code = $1
             "#,
         )
         .bind(course_code)
@@ -57,7 +61,7 @@ impl CourseRepository {
         Ok(course)
     }
 
-    pub async fn get_courses_by_teacher(&self, teacher_id: &str) -> Result<Course, sqlx::Error> {
+    pub async fn get_courses_by_teacher(&self, teacher_id: Uuid) -> Result<Course, sqlx::Error> {
         let courses = query_as::<_, Course>(
             r#"
               SELECT
@@ -66,10 +70,12 @@ impl CourseRepository {
                   code,
                   teacher_id,
                   password,
+                  status,
+                  quantity,
                   created_at,
                   updated_at
               FROM courses
-              WHERE id = $1
+              WHERE teacher_id = $1
             "#,
         )
         .bind(teacher_id)

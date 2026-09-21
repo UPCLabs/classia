@@ -1,59 +1,48 @@
-use std::sync::Arc;
-
 use axum::{
     Json, Router,
     extract::{Path, State},
     routing::get,
 };
-use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::users::{dto::CourseResponseDto, repository::CourseRepository, service::CourseService};
+use crate::{app_error::AppError, app_state::ClassiaState, courses::dto::CourseResponseDto};
 
-pub fn route(pool: PgPool) -> Router {
-    let repository = CourseRepository::new(pool);
-    let service = Arc::new(CourseService::new(repository));
-
+pub fn route() -> Router<ClassiaState> {
     Router::new()
-        .route("/courses/getCourseById/{id_course}", get(get_course_by_id))
-        .route("/courses/getCourseByCode/{course_code}", get(get_course_by_code))
-        .route("/courses/getTeachersCourse/{teacher_code}", get(get_courses_by_teacher))
-        .with_state(service)
+        .route("/ById/{id_course}", get(get_course_by_id))
+        .route("/getCourseByCode/{course_code}", get(get_course_by_code))
+        .route(
+            "/getTeachersCourse/{teacher_id}",
+            get(get_courses_by_teacher),
+        )
 }
 
 async fn get_course_by_id(
-    State(service): State<Arc<CourseService>>,
+    State(state): State<ClassiaState>,
     Path(id_course): Path<Uuid>,
-) -> Result<Json<CourseResponseDto>, String> {
-    let course = service
-        .get_course_by_id(id_course)
-        .await
-        .map_err(|error| error)?;
+) -> Result<Json<CourseResponseDto>, AppError> {
+    let course = state.course_service.get_course_by_id(id_course).await?;
 
     Ok(Json(course.into()))
 }
 
 async fn get_course_by_code(
-    State(service): State<Arc<CourseService>>,
-    Path(course_code): Path<Uuid>,
-) -> Result<Json<CourseResponseDto>, String> {
-    let course = service
-        .get_course_by_id(course_code)
-        .await
-        .map_err(|error| error)?;
+    State(state): State<ClassiaState>,
+    Path(course_code): Path<String>,
+) -> Result<Json<CourseResponseDto>, AppError> {
+    let course = state.course_service.get_course_by_code(course_code).await?;
 
     Ok(Json(course.into()))
 }
 
 async fn get_courses_by_teacher(
-    State(service): State<Arc<CourseService>>,
-    Path(id_user): Path<Uuid>,
-) -> Result<Json<CourseResponseDto>, String> {
-    let course = service
-        .get_course_by_id(id_user)
-        .await
-        .map_err(|error| error)?;
+    State(state): State<ClassiaState>,
+    Path(teacher_id): Path<Uuid>,
+) -> Result<Json<CourseResponseDto>, AppError> {
+    let course = state
+        .course_service
+        .get_courses_by_teacher(teacher_id)
+        .await?;
 
     Ok(Json(course.into()))
 }
-
