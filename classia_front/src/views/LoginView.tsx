@@ -1,12 +1,12 @@
 import { useState } from 'react'
 export default function LoginView() {
 
-  const [usuario, setUsuario] = useState('')
-  const [contraseña, setContraseña] = useState('')
+  const [user, setUser] = useState('')
+  const [password, setPassword] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Login con:', { usuario, contraseña })
+    console.log('Login con:', { user, password })
   }
 
   return (
@@ -21,8 +21,8 @@ export default function LoginView() {
             <label className="text-[#E8DCC4] text-sm font-medium">Usuario</label>
             <input
               type="text"
-              value={usuario}
-              onChange={(e) => setUsuario(e.target.value)}
+              value={user}
+              onChange={(e) => setUser(e.target.value)}
               className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
             />
           </div>
@@ -31,8 +31,8 @@ export default function LoginView() {
             <label className="text-[#E8DCC4] text-sm font-medium">Contraseña</label>
             <input
               type="password"
-              value={contraseña}
-              onChange={(e) => setContraseña(e.target.value)}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
             />
           </div>
