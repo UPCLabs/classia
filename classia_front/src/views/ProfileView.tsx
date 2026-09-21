@@ -1,14 +1,7 @@
 import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-
-type ProfileForm = {
-  nombre: string
-  correo: string
-  carrera: string
-  descripcion: string
-  avatar?: FileList
-}
+import type { ProfileForm } from '../types/Profile'
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -30,7 +23,7 @@ export default function ProfileView() {
       return Promise.resolve(formData)
     },
     onSuccess: () => {
-      // TODO: Mostrar feedback cuando se defina la libreria de notificaciones.
+      // TODO: Show feedback when the notification library is defined.
     },
   })
 
@@ -101,33 +94,33 @@ export default function ProfileView() {
 
         <div className="space-y-5">
           <div className="grid gap-2">
-            <label htmlFor="nombre" className="font-semibold">
+            <label htmlFor="name" className="font-semibold">
               Nombre
             </label>
             <input
-              id="nombre"
+              id="name"
               type="text"
               className="rounded-lg border border-verde-medio/20 bg-crema/80 p-3 text-verde-oscuro outline-none transition placeholder:text-verde-oscuro/50 focus:border-dorado focus:ring-2 focus:ring-dorado"
               placeholder="Tu nombre"
-              {...register('nombre', {
+              {...register('name', {
                 required: 'El nombre es obligatorio',
               })}
             />
-            {errors.nombre && (
-              <p className="text-sm text-red-700">{errors.nombre.message}</p>
+            {errors.name && (
+              <p className="text-sm text-red-700">{errors.name.message}</p>
             )}
           </div>
 
           <div className="grid gap-2">
-            <label htmlFor="correo" className="font-semibold">
+            <label htmlFor="email" className="font-semibold">
               Correo
             </label>
             <input
-              id="correo"
+              id="email"
               type="email"
               className="rounded-lg border border-verde-medio/20 bg-crema/80 p-3 text-verde-oscuro outline-none transition placeholder:text-verde-oscuro/50 focus:border-dorado focus:ring-2 focus:ring-dorado"
               placeholder="tu@correo.com"
-              {...register('correo', {
+              {...register('email', {
                 required: 'El correo es obligatorio',
                 pattern: {
                   value: emailPattern,
@@ -135,45 +128,45 @@ export default function ProfileView() {
                 },
               })}
             />
-            {errors.correo && (
-              <p className="text-sm text-red-700">{errors.correo.message}</p>
+            {errors.email && (
+              <p className="text-sm text-red-700">{errors.email.message}</p>
             )}
           </div>
 
           <div className="grid gap-2">
-            <label htmlFor="carrera" className="font-semibold">
+            <label htmlFor="career" className="font-semibold">
               Carrera
             </label>
             <input
-              id="carrera"
+              id="career"
               type="text"
               className="rounded-lg border border-verde-medio/20 bg-crema/80 p-3 text-verde-oscuro outline-none transition placeholder:text-verde-oscuro/50 focus:border-dorado focus:ring-2 focus:ring-dorado"
               placeholder="Tu carrera"
-              {...register('carrera', {
+              {...register('career', {
                 required: 'La carrera es obligatoria',
               })}
             />
-            {errors.carrera && (
-              <p className="text-sm text-red-700">{errors.carrera.message}</p>
+            {errors.career && (
+              <p className="text-sm text-red-700">{errors.career.message}</p>
             )}
           </div>
 
           <div className="grid gap-2">
-            <label htmlFor="descripcion" className="font-semibold">
+            <label htmlFor="description" className="font-semibold">
               Descripcion
             </label>
             <textarea
-              id="descripcion"
+              id="description"
               rows={4}
               className="resize-none rounded-lg border border-verde-medio/20 bg-crema/80 p-3 text-verde-oscuro outline-none transition placeholder:text-verde-oscuro/50 focus:border-dorado focus:ring-2 focus:ring-dorado"
               placeholder="Cuentanos un poco sobre ti"
-              {...register('descripcion', {
+              {...register('description', {
                 required: 'La descripcion es obligatoria',
               })}
             />
-            {errors.descripcion && (
+            {errors.description && (
               <p className="text-sm text-red-700">
-                {errors.descripcion.message}
+                {errors.description.message}
               </p>
             )}
           </div>
