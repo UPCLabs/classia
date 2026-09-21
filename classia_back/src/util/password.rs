@@ -1,4 +1,7 @@
-use argon2::{Argon2, password_hash::{PasswordHasher, PasswordVerifier, phc::PasswordHash}};
+use argon2::{
+    Argon2,
+    password_hash::{PasswordHasher, PasswordVerifier, phc::PasswordHash},
+};
 
 pub fn hash_password(password: &str) -> Result<String, argon2::password_hash::Error> {
     let argon2 = Argon2::default();

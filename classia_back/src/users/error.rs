@@ -40,7 +40,7 @@ impl From<UserError> for AppError {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
                 code: "HASHING_ERROR",
                 message: "Error occurred while hashing password".to_string(),
-            }
+            },
         }
     }
 }

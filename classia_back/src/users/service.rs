@@ -46,9 +46,9 @@ impl UserService {
             let mensaje = errors
                 .field_errors()
                 .values()
-                .next() 
-                .and_then(|field_errors| field_errors.first()) 
-                .and_then(|error| error.message.clone()) 
+                .next()
+                .and_then(|field_errors| field_errors.first())
+                .and_then(|error| error.message.clone())
                 .unwrap_or_else(|| "Datos inválidos".into());
             UserError::ValidationError(mensaje.to_string())
         })?;

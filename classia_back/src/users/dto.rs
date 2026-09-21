@@ -30,13 +30,21 @@ impl From<User> for UserResponseDto {
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct UserCreateDto {
-    #[validate(length(min = 1, max = 100, message = "El nombre debe tener entre 1 y 100 caracteres"))]
+    #[validate(length(
+        min = 1,
+        max = 100,
+        message = "El nombre debe tener entre 1 y 100 caracteres"
+    ))]
     pub name: String,
 
     #[validate(email(message = "Correo inválido"))]
     pub email: String,
 
-    #[validate(length(min = 8, max = 20, message = "La contraseña debe tener entre 8 y 20 caracteres"))]
+    #[validate(length(
+        min = 8,
+        max = 20,
+        message = "La contraseña debe tener entre 8 y 20 caracteres"
+    ))]
     pub password: String,
 
     pub role: UserRole,

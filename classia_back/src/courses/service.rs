@@ -1,6 +1,9 @@
 use uuid::Uuid;
+use validator::Validate;
 
-use crate::courses::{error::CourseError, models::Course, repository::CourseRepository};
+use crate::courses::{
+    dto::CourseCreateDto, error::CourseError, models::Course, repository::CourseRepository,
+};
 
 pub struct CourseService {
     course_repositoy: CourseRepository,
@@ -9,6 +12,34 @@ pub struct CourseService {
 impl CourseService {
     pub fn new(course_repositoy: CourseRepository) -> Self {
         Self { course_repositoy }
+    }
+
+    pub async fn create_course(&self, body: CourseCreateDto) -> Result<Course, CourseError> {
+        let body = CourseCreateDto {
+            name: body.name.trim().to_string(),
+            code: body.code.trim().to_string(),
+            password: body.password.trim().to_string(),
+            status: body.status.trim().to_string(),
+            ..body
+        };
+
+        body.validate().map_err(|errors| {
+            let message = errors
+                .field_errors()
+                .values()
+                .next()
+                .and_then(|field_errors| field_errors.first())
+                .and_then(|error| error.message.clone())
+                .map(|message| message.to_string())
+                .unwrap_or_else(|| "Datos invalidos".to_string());
+
+            CourseError::ValidationError(message)
+        })?;
+
+        self.course_repositoy
+            .create_course(body)
+            .await
+            .map_err(CourseError::Database)
     }
 
     // We need to change to our custom errors... API must not know about postgres
