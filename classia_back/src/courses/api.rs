@@ -1,7 +1,7 @@
 use axum::{
     Json, Router,
     extract::{Path, State},
-    routing::get,
+    routing::{get, post},
 };
 use uuid::Uuid;
 
@@ -15,6 +15,7 @@ pub fn route() -> Router<ClassiaState> {
             "/getTeachersCourse/{teacher_id}",
             get(get_courses_by_teacher),
         )
+        .route("/create", post(create_course))
 }
 
 async fn get_course_by_id(
@@ -43,6 +44,15 @@ async fn get_courses_by_teacher(
         .course_service
         .get_courses_by_teacher(teacher_id)
         .await?;
+
+    Ok(Json(course.into()))
+}
+
+async fn create_course(
+    State(state): State<ClassiaState>,
+    Json(body): Json<CourseCreateDto>,
+) -> Result<Json<CourseResponseDto>, AppError> {
+    let course = state.course_service.create_course(body).await?;
 
     Ok(Json(course.into()))
 }

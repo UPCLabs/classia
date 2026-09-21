@@ -4,6 +4,7 @@ use axum::http::StatusCode;
 #[derive(Debug)]
 pub enum CourseError {
     CourseNotFound,
+    ValidationError(String),
     Database(sqlx::Error),
 }
 
@@ -14,6 +15,11 @@ impl From<CourseError> for AppError {
                 status: StatusCode::NOT_FOUND,
                 code: "COURSE_NOT_FOUND",
                 message: "Curso no encontrado".to_string(),
+            },
+            CourseError::ValidationError(message) => AppError {
+                status: StatusCode::BAD_REQUEST,
+                code: "VALIDATION_ERROR",
+                message,
             },
             CourseError::Database(error) => {
                 eprintln!("Database error: {}", error);

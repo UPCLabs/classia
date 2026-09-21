@@ -2,7 +2,7 @@ use sqlx::PgPool;
 use sqlx::query_as;
 use uuid::Uuid;
 
-use crate::courses::models::Course;
+use crate::courses::{dto::CourseCreateDto, models::Course};
 
 pub struct CourseRepository {
     pool: PgPool,
@@ -83,5 +83,43 @@ impl CourseRepository {
         .await?;
 
         Ok(courses)
+    }
+
+    pub async fn create_course(&self, body: CourseCreateDto) -> Result<Course, sqlx::Error> {
+        let course = query_as::<_, Course>(
+            r#"
+              INSERT INTO courses (
+                  id,
+                  name,
+                  code,
+                  teacher_id,
+                  password,
+                  status,
+                  quantity
+              )
+              VALUES ($1, $2, $3, $4, $5, $6, $7)
+              RETURNING
+                  id,
+                  name,
+                  code,
+                  teacher_id,
+                  password,
+                  status,
+                  quantity,
+                  created_at,
+                  updated_at
+            "#,
+        )
+        .bind(Uuid::now_v7())
+        .bind(body.name)
+        .bind(body.code)
+        .bind(body.teacher_id)
+        .bind(body.password)
+        .bind(body.status)
+        .bind(body.quantity)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(course)
     }
 }
