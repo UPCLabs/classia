@@ -1,0 +1,4 @@
+name: Production
+variables:
+  BASE_URL: https://classia.grupo4.org
+scope: shared

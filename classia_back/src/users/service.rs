@@ -1,0 +1,80 @@
+use uuid::Uuid;
+use validator::Validate;
+
+use crate::{
+    users::{dto::UserCreateDto, error::UserError, models::User, repository::UserRepository},
+    util::password::hash_password,
+};
+
+pub struct UserService {
+    user_repository: UserRepository,
+}
+
+impl UserService {
+    pub fn new(user_repository: UserRepository) -> Self {
+        Self { user_repository }
+    }
+
+    pub async fn get_user_by_id(&self, id_user: Uuid) -> Result<User, UserError> {
+        self.user_repository
+            .get_user_by_id(id_user)
+            .await
+            .map_err(|error| match error {
+                sqlx::Error::RowNotFound => UserError::UserNotFound,
+                error => UserError::Database(error),
+            })
+    }
+
+    pub async fn get_user_by_email(&self, email: &str) -> Result<User, UserError> {
+        self.user_repository
+            .get_user_by_email(email)
+            .await
+            .map_err(|error| match error {
+                sqlx::Error::RowNotFound => UserError::UserNotFound,
+                error => UserError::Database(error),
+            })
+    }
+
+    pub async fn create_user(&self, body: UserCreateDto) -> Result<User, UserError> {
+        let body = UserCreateDto {
+            name: body.name.trim().to_string(),
+            email: body.email.trim().to_string(),
+            password: body.password,
+            role: body.role,
+        };
+
+        body.validate().map_err(|errors| {
+            let message = errors
+                .field_errors()
+                .iter()
+                .flat_map(|(field, field_errors)| {
+                    field_errors.iter().map(move |error| {
+                        let msg = error.message.as_deref().unwrap_or("Dato inválido");
+
+                        format!("{field}: {msg}")
+                    })
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            UserError::ValidationError(message)
+        })?;
+
+        if self
+            .user_repository
+            .get_user_by_email(&body.email)
+            .await
+            .is_ok()
+        {
+            return Err(UserError::EmailAlreadyExists);
+        }
+
+        let password_hash = hash_password(&body.password)
+            .map_err(|error| UserError::InternalError(error.to_string()))?;
+
+        self.user_repository
+            .insert_user(&body.name, &body.email, &password_hash, body.role)
+            .await
+            .map_err(UserError::Database)
+    }
+}
