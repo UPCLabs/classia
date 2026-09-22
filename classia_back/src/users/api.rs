@@ -1,7 +1,17 @@
-use axum::{Json, Router, extract::State, routing::post};
+use axum::{
+    Json, Router,
+    extract::State,
+    http::StatusCode,
+    routing::{patch, post},
+};
 use serde_json::{Value, json};
 
-use crate::{error::AppError, state::ClassiaState, users::dto::UserCreateDto};
+use crate::{
+    auth::AuthenticatedUser,
+    error::AppError,
+    state::ClassiaState,
+    users::dto::{ChangePasswordDto, UserCreateDto},
+};
 
 pub fn route() -> Router<ClassiaState> {
     Router::new()
@@ -22,11 +32,9 @@ async fn create_user(
 
 async fn change_password(
     State(state): State<ClassiaState>,
-    Json(body): Json<ChangePasswordDto>,
+    user: AuthenticatedUser,
+    Json(request): Json<ChangePasswordDto>,
 ) -> Result<StatusCode, AppError> {
-    //    state
-    //        .user_service
-    //        .change_password(current_user.id, body)
-    //        .await?;
+    state.user_service.change_password(user.id, request).await?;
     Ok(StatusCode::NO_CONTENT)
 }

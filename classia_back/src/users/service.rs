@@ -8,10 +8,7 @@ use crate::{
         models::User,
         repository::UserRepository,
     },
-    util::{
-        password::{compare_password, hash_password},
-        validation::validation_message,
-    },
+    util::{password::hash_password, validation::validation_message},
 };
 
 pub struct UserService {
@@ -24,42 +21,42 @@ impl UserService {
     }
 
     pub async fn get_user_by_id(&self, id_user: Uuid) -> Result<User, UserError> {
-        self.user_repository
+        let consult = self
+            .user_repository
             .get_user_by_id(id_user)
             .await
-            .map_err(|error| match error {
-                sqlx::Error::RowNotFound => UserError::UserNotFound,
-                error => UserError::Database(error),
-            })
+            .map_err(|e| UserError::Database(e))?;
+
+        match consult {
+            Some(user) => Ok(user),
+            None => Err(UserError::UserNotFound),
+        }
     }
 
     pub async fn get_user_by_email(&self, email: &str) -> Result<User, UserError> {
-        self.user_repository
+        let consult = self
+            .user_repository
             .get_user_by_email(email)
             .await
-            .map_err(|error| match error {
-                sqlx::Error::RowNotFound => UserError::UserNotFound,
-                error => UserError::Database(error),
-            })
+            .map_err(UserError::Database)?;
+
+        match consult {
+            Some(user) => Ok(user),
+            None => Err(UserError::UserNotFound),
+        }
     }
 
     pub async fn create_user(&self, body: UserCreateDto) -> Result<User, UserError> {
-        let body = UserCreateDto {
-            name: body.name.trim().to_string(),
-            email: body.email.trim().to_string(),
-            password: body.password,
-            role: body.role,
-        };
-
         body.validate()
             .map_err(|errors| UserError::ValidationError(validation_message(errors)))?;
 
-        if self
+        let exists = self
             .user_repository
-            .get_user_by_email(&body.email)
+            .exists_by_email(&body.email)
             .await
-            .is_ok()
-        {
+            .map_err(UserError::Database)?;
+
+        if exists {
             return Err(UserError::EmailAlreadyExists);
         }
 
@@ -80,20 +77,14 @@ impl UserService {
         body.validate()
             .map_err(|errors| UserError::ValidationError(validation_message(errors)))?;
 
-        let user =
-            self.user_repository
-                .get_user_by_id(id_user)
-                .await
-                .map_err(|error| match error {
-                    sqlx::Error::RowNotFound => UserError::UserNotFound,
-                    error => UserError::Database(error),
-                })?;
+        let exists = self
+            .user_repository
+            .exists_by_id(id_user)
+            .await
+            .map_err(UserError::Database)?;
 
-        let is_valid = compare_password(&body.current_password, &user.password)
-            .map_err(|error| UserError::InternalError(error.to_string()))?;
-
-        if !is_valid {
-            return Err(UserError::InvalidCredentials);
+        if !exists {
+            return Err(UserError::UserNotFound);
         }
 
         let new_password_hash = hash_password(&body.new_password)
@@ -106,17 +97,11 @@ impl UserService {
     }
 
     pub async fn update_user(&self, id_user: Uuid, body: UpdateUserDto) -> Result<User, UserError> {
-        let body = UpdateUserDto {
-            name: body.name.map(|n| n.trim().to_string()),
-            email: body.email.map(|e| e.trim().to_string()),
-            role: body.role,
-        };
-
         body.validate()
             .map_err(|errors| UserError::ValidationError(validation_message(errors)))?;
 
         if let Some(email) = &body.email {
-            if let Ok(existing) = self.user_repository.get_user_by_email(email).await {
+            if let Ok(Some(existing)) = self.user_repository.get_user_by_email(email).await {
                 if existing.id != id_user {
                     return Err(UserError::EmailAlreadyExists);
                 }

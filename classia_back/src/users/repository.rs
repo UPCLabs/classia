@@ -14,8 +14,38 @@ impl UserRepository {
         Self { pool }
     }
 
-    pub async fn get_user_by_id(&self, id_user: Uuid) -> Result<User, sqlx::Error> {
-        let user = query_as::<_, User>(
+    pub async fn exists_by_email(&self, email: &str) -> Result<bool, sqlx::Error> {
+        sqlx::query_scalar::<_, bool>(
+            r#"
+            SELECT EXISTS(
+                SELECT 1
+                FROM users
+                WHERE email = $1
+            )
+            "#,
+        )
+        .bind(email)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    pub async fn exists_by_id(&self, user_id: Uuid) -> Result<bool, sqlx::Error> {
+        sqlx::query_scalar::<_, bool>(
+            r#"
+            SELECT EXISTS(
+                SELECT 1
+                FROM users
+                WHERE id = $1
+            )
+            "#,
+        )
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await
+    }
+
+    pub async fn get_user_by_id(&self, id_user: Uuid) -> Result<Option<User>, sqlx::Error> {
+        query_as::<_, User>(
             r#"
               SELECT
                   id,
@@ -32,14 +62,12 @@ impl UserRepository {
               "#,
         )
         .bind(id_user)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(user)
+        .fetch_optional(&self.pool)
+        .await
     }
 
-    pub async fn get_user_by_email(&self, user_email: &str) -> Result<User, sqlx::Error> {
-        let user = query_as::<_, User>(
+    pub async fn get_user_by_email(&self, user_email: &str) -> Result<Option<User>, sqlx::Error> {
+        query_as::<_, User>(
             r#"
                 SELECT
                     id,
@@ -56,10 +84,8 @@ impl UserRepository {
             "#,
         )
         .bind(user_email)
-        .fetch_one(&self.pool)
-        .await?;
-
-        Ok(user)
+        .fetch_optional(&self.pool)
+        .await
     }
 
     pub async fn insert_user(
