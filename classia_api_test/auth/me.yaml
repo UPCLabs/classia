@@ -1,0 +1,3 @@
+name: me
+method: GET
+url: '{{BASE_URL}}/auth/me'

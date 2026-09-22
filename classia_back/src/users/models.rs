@@ -2,7 +2,9 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, sqlx::Type, Deserialize, Serialize)]
+use crate::users::error::UserError;
+
+#[derive(Debug, sqlx::Type, Deserialize, Serialize, Clone, PartialEq, Eq)]
 #[sqlx(type_name = "user_role", rename_all = "snake_case")]
 pub enum UserRole {
     SuperAdmin,

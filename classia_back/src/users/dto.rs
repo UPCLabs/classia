@@ -1,32 +1,7 @@
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+use serde::Deserialize;
 use validator::Validate;
 
-use crate::users::models::{User, UserRole};
-
-#[derive(Debug, Serialize)]
-pub struct UserResponseDto {
-    pub id: Uuid,
-    pub name: String,
-    pub email: String,
-    pub role: UserRole,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-}
-
-impl From<User> for UserResponseDto {
-    fn from(value: User) -> Self {
-        Self {
-            id: value.id,
-            name: value.name,
-            email: value.email,
-            role: value.role,
-            created_at: value.created_at,
-            updated_at: value.updated_at,
-        }
-    }
-}
+use crate::users::models::UserRole;
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct UserCreateDto {

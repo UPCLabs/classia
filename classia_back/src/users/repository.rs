@@ -62,9 +62,15 @@ impl UserRepository {
         Ok(user)
     }
 
-    pub async fn insert_user( &self, name: &str, email: &str, password_hash: &str, role: UserRole,) -> Result<User, sqlx::Error> {
-    let user = query_as::<_, User>(
-        r#"
+    pub async fn insert_user(
+        &self,
+        name: &str,
+        email: &str,
+        password_hash: &str,
+        role: UserRole,
+    ) -> Result<User, sqlx::Error> {
+        let user = query_as::<_, User>(
+            r#"
         INSERT INTO users (name, email, password, role, status, token)
         VALUES ( $1, $2, $3, $4, 'active', '')
         RETURNING
@@ -78,15 +84,14 @@ impl UserRepository {
             created_at,
             updated_at
         "#,
-    )
-    .bind(name)
-    .bind(email)
-    .bind(password_hash)
-    .bind(role)
-    .fetch_one(&self.pool)
-    .await?;
+        )
+        .bind(name)
+        .bind(email)
+        .bind(password_hash)
+        .bind(role)
+        .fetch_one(&self.pool)
+        .await?;
 
-    Ok(user)
-}
-
+        Ok(user)
+    }
 }

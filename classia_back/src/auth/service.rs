@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-    auth::{error::AuthError, jwt::JwtService},
+    auth::{claims::Claims, dto::LoginRequest, error::AuthError, jwt::JwtService},
     users::UserService,
+    util::password::validate_password,
 };
 
 pub struct AuthService {
@@ -18,13 +19,23 @@ impl AuthService {
         }
     }
 
-    pub async fn login(&self, email: &str, password: &str) -> Result<(), AuthError> {
+    pub async fn login(&self, login: LoginRequest) -> Result<String, AuthError> {
         let user = self
             .user_service
-            .get_user_by_email(email)
+            .get_user_by_email(&login.email)
             .await
             .map_err(|_| AuthError::InvalidCredentials)?;
 
-        todo!()
+        if !validate_password(&login.password, &user.password)
+            .map_err(|e| AuthError::InternalError(e.to_string()))?
+        {
+            return Err(AuthError::InvalidCredentials);
+        }
+
+        Ok(self.jwt_service.generate(&user)?)
+    }
+
+    pub fn validate_token(&self, token: &str) -> Result<Claims, AuthError> {
+        self.jwt_service.validate(token)
     }
 }
