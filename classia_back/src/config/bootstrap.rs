@@ -1,20 +1,46 @@
-use std::error::Error;
+use std::{env, error::Error, io};
 
 use sqlx::PgPool;
 use tracing::info;
 
 use crate::util::password::hash_password;
 
-pub(crate) struct BootstrapAdminConfig {
-    pub name: String,
-    pub email: String,
-    pub password: String,
+struct BootstrapAdminConfig {
+    name: String,
+    email: String,
+    password: String,
 }
 
-pub(crate) async fn ensure_super_admin(
-    pool: &PgPool,
-    config: BootstrapAdminConfig,
-) -> Result<(), Box<dyn Error>> {
+impl BootstrapAdminConfig {
+    fn from_env() -> Result<Self, Box<dyn Error>> {
+        Ok(Self {
+            name: required_env("BOOTSTRAP_ADMIN_NAME")?,
+            email: required_env("BOOTSTRAP_ADMIN_EMAIL")?,
+            password: required_env("BOOTSTRAP_ADMIN_PASSWORD")?,
+        })
+    }
+}
+
+fn required_env(name: &'static str) -> Result<String, Box<dyn Error>> {
+    let value = env::var(name).map_err(|_| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("{name} must be set when no super administrator exists"),
+        )
+    })?;
+
+    if value.trim().is_empty() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("{name} must not be empty when no super administrator exists"),
+        )
+        .into());
+    }
+
+    Ok(value)
+}
+
+pub(crate) async fn ensure_super_admin(pool: &PgPool) -> Result<(), Box<dyn Error>> {
     let exists = sqlx::query_scalar::<_, bool>(
         r#"
           SELECT EXISTS (
@@ -32,6 +58,7 @@ pub(crate) async fn ensure_super_admin(
         return Ok(());
     }
 
+    let config = BootstrapAdminConfig::from_env()?;
     let password_hash = hash_password(&config.password)?;
 
     sqlx::query(

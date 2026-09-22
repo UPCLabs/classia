@@ -3,10 +3,10 @@ use std::{env, error::Error, sync::Arc};
 use axum::{Router, routing::get};
 use sqlx::PgPool;
 use tokio::net::TcpListener;
-use tracing::{error, info};
+use tracing::info;
 use tracing_subscriber::EnvFilter;
 
-use crate::{auth::JwtConfig, config::bootstrap::BootstrapAdminConfig, state::ClassiaState};
+use crate::{auth::JwtConfig, config::bootstrap::ensure_super_admin, state::ClassiaState};
 
 mod auth;
 mod config;
@@ -52,12 +52,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let pool = util::database::connect(&database_url).await?;
 
     info!("Checking superadmin...");
-    let admin_config = BootstrapAdminConfig {
-        email: "admin@grupo4.org".to_string(),
-        name: "superadmin".to_string(),
-        password: "admin1234*".to_string(),
-    };
-    config::bootstrap::ensure_super_admin(&pool, admin_config).await?;
+    ensure_super_admin(&pool).await?;
 
     info!("Initializing state...");
     let state = create_state(pool).await?;
