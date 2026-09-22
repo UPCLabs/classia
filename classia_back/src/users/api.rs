@@ -7,10 +7,7 @@ use axum::{
 use serde_json::{Value, json};
 
 use crate::{
-    auth::AuthenticatedUser,
-    error::AppError,
-    state::ClassiaState,
-    users::dto::{ChangePasswordDto, UserCreateDto},
+    auth::AuthenticatedUser, error::AppError, state::ClassiaState, users::{UserRole, dto::{ChangePasswordDto, UserCreateDto}},
 };
 
 pub fn route() -> Router<ClassiaState> {
@@ -21,8 +18,14 @@ pub fn route() -> Router<ClassiaState> {
 
 async fn create_user(
     State(service): State<ClassiaState>,
+    user: AuthenticatedUser,
     Json(body): Json<UserCreateDto>,
 ) -> Result<Json<Value>, AppError> {
+    
+    if user.role != UserRole::SuperAdmin && user.role != UserRole::Admin {
+        return Err(AppError::forbidden()); 
+    }
+
     let _ = service.user_service.create_user(body).await?;
 
     Ok(Json(json!({
