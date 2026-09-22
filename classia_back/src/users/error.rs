@@ -1,5 +1,6 @@
 use crate::error::AppError;
 use axum::http::StatusCode;
+use tracing::error;
 
 #[derive(Debug)]
 pub enum UserError {
@@ -19,10 +20,10 @@ impl From<UserError> for AppError {
                 message: "User not found".to_string(),
             },
             UserError::Database(error) => {
-                eprintln!("Database error: {}", error);
+                error!("Database error: {}", error);
                 AppError {
                     status: StatusCode::INTERNAL_SERVER_ERROR,
-                    code: StatusCode::NOT_FOUND.as_str(),
+                    code: StatusCode::INTERNAL_SERVER_ERROR.as_str(),
                     message: "Database error".to_string(),
                 }
             }
@@ -37,7 +38,7 @@ impl From<UserError> for AppError {
                 message,
             },
             UserError::InternalError(detalle) => {
-                eprintln!("InternalError: {}", detalle);
+                error!("InternalError: {}", detalle);
                 AppError {
                     status: StatusCode::INTERNAL_SERVER_ERROR,
                     code: "INTERNAL_ERROR",
