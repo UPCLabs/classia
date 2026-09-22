@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import LoginView from './views/LoginView'
 import ProfileView from './views/ProfileView'
 import RegisterView from './views/RegisterView'
+import LandingPage from './views/LandingPage'
 
 
 export default function Router() {
@@ -12,6 +13,7 @@ export default function Router() {
               <Route path='/auth/login' element={<LoginView />} />
               <Route path='/profile' element={<ProfileView/>} />
               <Route path='/auth/register' element={<RegisterView />} />
+              <Route path='/' element={<LandingPage />} />
             </Routes>
         </BrowserRouter>
     )
