@@ -6,6 +6,7 @@ use tracing::error;
 pub enum UserError {
     UserNotFound,
     EmailAlreadyExists,
+    InvalidCredentials,
     ValidationError(String),
     InternalError(String),
     Database(sqlx::Error),
@@ -30,7 +31,12 @@ impl From<UserError> for AppError {
             UserError::EmailAlreadyExists => AppError {
                 status: StatusCode::CONFLICT,
                 code: "EMAIL_ALREADY_EXISTS",
-                message: "Email already exists".to_string(),
+                message: "El correo ya existe".to_string(),
+            },
+            UserError::InvalidCredentials => AppError {
+                status: StatusCode::UNAUTHORIZED,
+                code: "INVALID_CREDENTIALS",
+                message: "Contraseña incorrecta ".to_string(),
             },
             UserError::ValidationError(message) => AppError {
                 status: StatusCode::BAD_REQUEST,
