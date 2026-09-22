@@ -1,0 +1,10 @@
+name: login
+method: POST
+url: '{{BASE_URL}}/auth/login'
+body:
+  type: json
+  content: |-
+    {
+      "email": "admin@grupo4.org",
+      "password": "admin1234*"
+    }

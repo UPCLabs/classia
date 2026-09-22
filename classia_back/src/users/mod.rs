@@ -10,6 +10,7 @@ use sqlx::PgPool;
 pub(crate) use api::route;
 pub(crate) use models::{User, UserRole};
 pub(crate) use service::UserService;
+
 pub(crate) fn build_service(pool: PgPool) -> UserService {
     let repository = repository::UserRepository::new(pool);
     UserService::new(repository)
