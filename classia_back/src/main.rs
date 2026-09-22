@@ -51,6 +51,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     info!("Connecting to database...");
     let pool = util::database::connect(&database_url).await?;
 
+    info!("Running database migrations...");
+    sqlx::migrate!().run(&pool).await?;
+
     info!("Checking superadmin...");
     ensure_super_admin(&pool).await?;
 
