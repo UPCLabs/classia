@@ -4,4 +4,10 @@ dist
 .gitignore
 .env
 .env.*
+Dockerfile.dev
+compose*.yml
+compose*.yaml
+docker-compose*.yml
+docker-compose*.yaml
+README.md
 npm-debug.log*

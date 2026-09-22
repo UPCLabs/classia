@@ -1,4 +1,4 @@
-CREATE DATABASE classia;
+BEGIN;
 
 CREATE TYPE user_role AS ENUM (
     'super_admin',
@@ -30,3 +30,5 @@ CREATE TABLE courses (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+COMMIT;
