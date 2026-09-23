@@ -1,4 +1,4 @@
 name: Production
 variables:
-  BASE_URL: https://classia.grupo4.org
+  BASE_URL: https://classia.grupo4.org/api
 scope: shared
