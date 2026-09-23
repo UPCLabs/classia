@@ -46,10 +46,10 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
     let state = ClassiaState::new(user_service, course_service, auth_service);
 
     Ok(Router::new()
-        .route("/ping", get(ping))
-        .nest("/auth", auth::route())
-        .nest("/users", users::route())
-        .nest("/courses", courses::route())
+        .route("/api/ping", get(ping))
+        .nest("/api/auth", auth::route())
+        .nest("/api/users", users::route())
+        .nest("/api/courses", courses::route())
         .with_state(state))
 }
 
