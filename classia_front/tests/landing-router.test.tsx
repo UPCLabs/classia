@@ -20,8 +20,8 @@ describe('LandingPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Aprende, enseña y crece con Classia' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '¿Qué es Classia?' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Comenzar' })).toHaveAttribute('href', '/login')
-    expect(screen.getByRole('link', { name: 'Iniciar sesión' })).toHaveAttribute('href', '/login')
+    expect(screen.getByRole('link', { name: 'Comenzar' })).toHaveAttribute('href', '/auth/login')
+    expect(screen.getByRole('link', { name: 'Iniciar sesión' })).toHaveAttribute('href', '/auth/login')
   })
 })
 

@@ -118,7 +118,7 @@ export default function LandingPage() {
             </p>
             <div className="mt-9 flex flex-col gap-4 sm:flex-row">
               <Link
-                to="/login"
+                to="/auth/login"
                 className="rounded-lg bg-verde-medio px-7 py-3 text-center font-bold text-crema transition hover:bg-verde-medio/80 focus:outline-none focus:ring-2 focus:ring-dorado focus:ring-offset-2 focus:ring-offset-verde-oscuro"
               >
                 Comenzar
@@ -228,7 +228,7 @@ export default function LandingPage() {
             </p>
           </div>
           <Link
-            to="/login"
+            to="/auth/login"
             className="w-full rounded-lg bg-verde-oscuro px-8 py-4 text-center text-lg font-bold text-crema transition hover:bg-verde-medio focus:outline-none focus:ring-2 focus:ring-verde-oscuro focus:ring-offset-2 focus:ring-offset-dorado md:w-auto"
           >
             Iniciar sesión
