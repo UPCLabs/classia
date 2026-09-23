@@ -5,6 +5,9 @@ mod models;
 mod repository;
 mod service;
 
+#[cfg(test)]
+mod tests;
+
 use sqlx::PgPool;
 
 pub(crate) use api::route;

@@ -20,8 +20,9 @@ export default function RegisterView() {
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <div className="flex flex-col gap-1">
-                        <label className="text-[#E8DCC4] text-sm font-medium">Nombre completo</label>
+                        <label htmlFor="register-name" className="text-[#E8DCC4] text-sm font-medium">Nombre completo</label>
                         <input
+                            id="register-name"
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
@@ -30,8 +31,9 @@ export default function RegisterView() {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                        <label className="text-[#E8DCC4] text-sm font-medium">Correo</label>
+                        <label htmlFor="register-email" className="text-[#E8DCC4] text-sm font-medium">Correo</label>
                         <input
+                            id="register-email"
                             type="text"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
@@ -40,8 +42,9 @@ export default function RegisterView() {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                        <label className="text-[#E8DCC4] text-sm font-medium">Código</label>
+                        <label htmlFor="register-code" className="text-[#E8DCC4] text-sm font-medium">Código</label>
                         <input
+                            id="register-code"
                             type="text"
                             value={code}
                             onChange={(e) => setCode(e.target.value)}
@@ -50,8 +53,9 @@ export default function RegisterView() {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                        <label className="text-[#E8DCC4] text-sm font-medium">Carrera</label>
+                        <label htmlFor="register-career" className="text-[#E8DCC4] text-sm font-medium">Carrera</label>
                         <input
+                            id="register-career"
                             type="text"
                             value={career}
                             onChange={(e) => setCareer(e.target.value)}

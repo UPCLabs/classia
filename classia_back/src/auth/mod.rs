@@ -6,6 +6,9 @@ mod extractor;
 mod jwt;
 mod service;
 
+#[cfg(test)]
+mod tests;
+
 use std::sync::Arc;
 
 use crate::{

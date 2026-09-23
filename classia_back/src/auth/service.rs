@@ -32,7 +32,11 @@ impl AuthService {
             return Err(AuthError::InvalidCredentials);
         }
 
-        Ok(self.jwt_service.generate(&user)?)
+        if user.status != "active" {
+            return Err(AuthError::InactiveUser);
+        }
+
+        self.jwt_service.generate(&user)
     }
 
     pub fn validate_token(&self, token: &str) -> Result<Claims, AuthError> {

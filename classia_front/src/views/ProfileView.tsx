@@ -13,7 +13,14 @@ export default function ProfileView() {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<ProfileForm>()
+  } = useForm<ProfileForm>({
+    defaultValues: {
+      name: '',
+      email: '',
+      career: '',
+      description: '',
+    },
+  })
 
   const avatarRegister = register('avatar')
 
