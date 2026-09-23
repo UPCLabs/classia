@@ -25,6 +25,6 @@ USER 10001:10001
 EXPOSE 5000
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl --fail --silent --show-error "http://127.0.0.1:${PORT}/ping" > /dev/null || exit 1
+    CMD curl --fail --silent --show-error "http://127.0.0.1:${PORT}/api/ping" > /dev/null || exit 1
 
 CMD ["classia-back"]
