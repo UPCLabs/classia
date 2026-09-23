@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 interface Course {
   id: number
@@ -11,17 +11,18 @@ interface Student {
 }
 
 export default function CoursesView() {
-
   const [student, setStudent] = useState<Student | null>(null)
 
   useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setStudent({
+        name: 'Juan Pérez',
+        code: 'A00123456',
+      })
+    }, 0)
 
-    setStudent({
-      name: 'Juan Pérez',
-      code: 'A00123456',
-    })
+    return () => window.clearTimeout(timeout)
   }, [])
-
 
   const courses: Course[] = [
     { id: 1, name: 'Programación Orientada a Objetos' },
@@ -29,13 +30,13 @@ export default function CoursesView() {
     { id: 3, name: 'Cálculo Integral' },
   ]
 
- if (!student) {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-[#123F36]">
-      <p className="text-[#E8DCC4]">Cargando...</p>
-    </div>
-  )
-}
+  if (!student) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#123F36]">
+        <p className="text-[#E8DCC4]">Cargando...</p>
+      </div>
+    )
+  }
 
 return (
   <div className="min-h-screen bg-[#123F36]">

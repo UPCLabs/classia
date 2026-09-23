@@ -25,7 +25,7 @@ impl UserService {
             .user_repository
             .get_user_by_id(id_user)
             .await
-            .map_err(|e| UserError::Database(e))?;
+            .map_err(UserError::Database)?;
 
         match consult {
             Some(user) => Ok(user),
@@ -101,10 +101,14 @@ impl UserService {
             .map_err(|errors| UserError::ValidationError(validation_message(errors)))?;
 
         if let Some(email) = &body.email {
-            if let Ok(Some(existing)) = self.user_repository.get_user_by_email(email).await {
-                if existing.id != id_user {
-                    return Err(UserError::EmailAlreadyExists);
-                }
+            let existing = self
+                .user_repository
+                .get_user_by_email(email)
+                .await
+                .map_err(UserError::Database)?;
+
+            if existing.is_some_and(|existing| existing.id != id_user) {
+                return Err(UserError::EmailAlreadyExists);
             }
         }
 

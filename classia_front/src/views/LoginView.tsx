@@ -18,8 +18,9 @@ export default function LoginView() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
-            <label className="text-[#E8DCC4] text-sm font-medium">Usuario</label>
+            <label htmlFor="login-user" className="text-[#E8DCC4] text-sm font-medium">Usuario</label>
             <input
+              id="login-user"
               type="text"
               value={user}
               onChange={(e) => setUser(e.target.value)}
@@ -28,8 +29,9 @@ export default function LoginView() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[#E8DCC4] text-sm font-medium">Contraseña</label>
+            <label htmlFor="login-password" className="text-[#E8DCC4] text-sm font-medium">Contraseña</label>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

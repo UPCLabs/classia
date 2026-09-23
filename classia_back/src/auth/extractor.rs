@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use crate::{error::AppError, state::ClassiaState, users::UserRole};
 
-fn find_cookie<'a>(cookie_header: &'a str, expected_name: &str) -> Option<&'a str> {
+pub(super) fn find_cookie<'a>(cookie_header: &'a str, expected_name: &str) -> Option<&'a str> {
     cookie_header
         .split(';')
         .filter_map(|cookie| cookie.trim().split_once('='))
