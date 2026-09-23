@@ -94,7 +94,7 @@ async fn login_cookie(app: &Router, email: &str, password: &str) -> String {
     let response = request(
         app,
         Method::POST,
-        "/auth/login",
+        "/api/auth/login",
         Some(json!({ "email": email, "password": password })),
         None,
     )
@@ -135,7 +135,7 @@ async fn login_accepts_valid_credentials_and_rejects_invalid_or_inactive_users(p
     let valid = request(
         &app,
         Method::POST,
-        "/auth/login",
+        "/api/auth/login",
         Some(json!({
             "email": "active@example.com",
             "password": "correct-password"
@@ -149,7 +149,7 @@ async fn login_accepts_valid_credentials_and_rejects_invalid_or_inactive_users(p
     let invalid = request(
         &app,
         Method::POST,
-        "/auth/login",
+        "/api/auth/login",
         Some(json!({
             "email": "active@example.com",
             "password": "wrong-password"
@@ -162,7 +162,7 @@ async fn login_accepts_valid_credentials_and_rejects_invalid_or_inactive_users(p
     let inactive = request(
         &app,
         Method::POST,
-        "/auth/login",
+        "/api/auth/login",
         Some(json!({
             "email": "inactive@example.com",
             "password": "correct-password"
@@ -175,7 +175,7 @@ async fn login_accepts_valid_credentials_and_rejects_invalid_or_inactive_users(p
     let hidden_inactive_status = request(
         &app,
         Method::POST,
-        "/auth/login",
+        "/api/auth/login",
         Some(json!({
             "email": "inactive@example.com",
             "password": "wrong-password"
@@ -217,7 +217,7 @@ async fn user_creation_enforces_roles_and_duplicate_email(pool: PgPool) {
     let created = request(
         &app,
         Method::POST,
-        "/users/create",
+        "/api/users/create",
         Some(payload.clone()),
         Some(&admin_cookie),
     )
@@ -234,7 +234,7 @@ async fn user_creation_enforces_roles_and_duplicate_email(pool: PgPool) {
     let duplicate = request(
         &app,
         Method::POST,
-        "/users/create",
+        "/api/users/create",
         Some(payload.clone()),
         Some(&admin_cookie),
     )
@@ -244,7 +244,7 @@ async fn user_creation_enforces_roles_and_duplicate_email(pool: PgPool) {
     let forbidden = request(
         &app,
         Method::POST,
-        "/users/create",
+        "/api/users/create",
         Some(json!({
             "name": "Another User",
             "email": "another@example.com",
@@ -273,7 +273,7 @@ async fn password_change_replaces_the_login_credential(pool: PgPool) {
     let changed = request(
         &app,
         Method::PATCH,
-        "/users/change-password",
+        "/api/users/change-password",
         Some(json!({ "new_password": "new-password" })),
         Some(&cookie),
     )
@@ -283,7 +283,7 @@ async fn password_change_replaces_the_login_credential(pool: PgPool) {
     let old_login = request(
         &app,
         Method::POST,
-        "/auth/login",
+        "/api/auth/login",
         Some(json!({ "email": "user@example.com", "password": "old-password" })),
         None,
     )
@@ -293,7 +293,7 @@ async fn password_change_replaces_the_login_credential(pool: PgPool) {
     let new_login = request(
         &app,
         Method::POST,
-        "/auth/login",
+        "/api/auth/login",
         Some(json!({ "email": "user@example.com", "password": "new-password" })),
         None,
     )
@@ -317,7 +317,7 @@ async fn courses_can_be_created_and_queried_through_existing_routes(pool: PgPool
     let created = request(
         &app,
         Method::POST,
-        "/courses/create",
+        "/api/courses/create",
         Some(json!({
             "name": "Software Engineering",
             "code": "IS212",
@@ -334,9 +334,9 @@ async fn courses_can_be_created_and_queried_through_existing_routes(pool: PgPool
     let course_id = created["id"].as_str().expect("course id is present");
 
     for uri in [
-        format!("/courses/ById/{course_id}"),
-        "/courses/getCourseByCode/IS212".to_string(),
-        format!("/courses/getTeachersCourse/{teacher_id}"),
+        format!("/api/courses/ById/{course_id}"),
+        "/api/courses/getCourseByCode/IS212".to_string(),
+        format!("/api/courses/getTeachersCourse/{teacher_id}"),
     ] {
         let response = request(&app, Method::GET, &uri, None, Some(&teacher_cookie)).await;
         assert_eq!(response.status(), StatusCode::OK);
@@ -347,7 +347,7 @@ async fn courses_can_be_created_and_queried_through_existing_routes(pool: PgPool
     let missing = request(
         &app,
         Method::GET,
-        &format!("/courses/ById/{}", Uuid::now_v7()),
+        &format!("/api/courses/ById/{}", Uuid::now_v7()),
         None,
         Some(&teacher_cookie),
     )
