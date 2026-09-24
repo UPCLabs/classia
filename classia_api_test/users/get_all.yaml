@@ -1,0 +1,3 @@
+name: Listar Usuarios
+method: GET
+url: '{{BASE_URL}}/api/users/getAll'

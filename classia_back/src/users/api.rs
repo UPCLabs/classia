@@ -14,8 +14,8 @@ pub fn route() -> Router<ClassiaState> {
     Router::new()
         .route("/create", post(create_user))
         .route("/change-password", patch(change_password))
-        .route("/update/:id", patch(update_user))
-        .route("/delete/:id", delete(delete_user))
+        .route("/update/{id}", patch(update_user))
+        .route("/delete/{id}", delete(delete_user))
         .route("/getAll", get(list_users))
 }
 

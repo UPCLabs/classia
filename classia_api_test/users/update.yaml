@@ -1,0 +1,12 @@
+name: Actualizar Usuario
+method: PATCH
+url: '{{BASE_URL}}/api/users/update/01a0d531-50ca-7486-a9b7-d844d221ab57'
+body:
+  type: json
+  content: |-
+    {
+      "name": "Estudiante Actualizado",
+      "email": "estudiante@grupo4.org",
+      "role": "Student",
+      "status": "active"
+    }
