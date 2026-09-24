@@ -5,6 +5,6 @@ body:
   type: json
   content: |-
     {
-      "email": "estudiante@grupo4.org",
-      "password": "NewPassword1234*"
+      "email": "admin@example.com",
+      "password": "admin1234*"
     }
