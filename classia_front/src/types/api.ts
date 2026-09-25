@@ -38,3 +38,10 @@ export type ApiError = {
   code: string
   message: string
 }
+
+export type AuthUser = {
+  id: string
+  name: string
+  email: string
+  role: UserRole
+}

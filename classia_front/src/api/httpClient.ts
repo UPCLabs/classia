@@ -22,8 +22,13 @@ httpClient.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    if (error.response?.status === 401) {
-      window.location.href = '/login'
+    const isSessionCheck = error.config?.url?.endsWith('/auth/me')
+    if (
+      error.response?.status === 401 &&
+      window.location.pathname !== '/auth/login' &&
+      !isSessionCheck
+    ) {
+      window.location.href = '/auth/login'
     }
 
     if (isApiError(error.response?.data)) {
