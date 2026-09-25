@@ -1,8 +1,3 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import LoginView from './views/LoginView'
-import ProfileView from './views/ProfileView'
-import RegisterView from './views/RegisterView'
-import LandingPage from './views/LandingPage'
 import CoursesView from './views/EstudentCourses/CoursesView'
 import DashboardView from './views/DashboardView'
 import { AuthProvider } from './auth/AuthProvider'
