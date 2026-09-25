@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import CoursesView from '../src/views/EstudentCourses/CoursesView'
+import CoursesView from '../src/views/StudentCourses/CoursesView'
 
 describe('CoursesView', () => {
   it('loads and renders the static student and courses', async () => {

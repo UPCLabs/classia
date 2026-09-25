@@ -66,6 +66,8 @@ describe('Router', () => {
     ['/auth/register', 'Registro de usuario'],
     ['/profile', 'Guardar cambios'],
     ['/courses', 'Mis cursos'],
+    ['/account/change-password', 'Cambiar contraseña'],
+    ['/change-password', 'Cambiar contraseña'],
     ['/dashboard', 'Panel principal'],
     ['/', 'Aprende, enseña y crece con Classia'],
   ])('renders %s', async (path, landmark) => {

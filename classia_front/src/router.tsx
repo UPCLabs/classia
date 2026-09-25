@@ -1,4 +1,10 @@
-import CoursesView from './views/EstudentCourses/CoursesView'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import LoginView from './views/LoginView'
+import ProfileView from './views/ProfileView'
+import RegisterView from './views/RegisterView'
+import LandingPage from './views/LandingPage'
+import CoursesView from './views/StudentCourses/CoursesView'
+import ChangePasswordView from './views/Account/ChangePasswordView'
 import DashboardView from './views/DashboardView'
 import { AuthProvider } from './auth/AuthProvider'
 import ProtectedRoute from './auth/ProtectedRoute'
@@ -38,6 +44,22 @@ export default function Router() {
             element={
               <ProtectedRoute>
                 <ProfileView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/account/change-password"
+            element={
+              <ProtectedRoute>
+                <ChangePasswordView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/change-password"
+            element={
+              <ProtectedRoute>
+                <ChangePasswordView />
               </ProtectedRoute>
             }
           />
