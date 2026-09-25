@@ -3,7 +3,9 @@ import LoginView from './views/LoginView'
 import ProfileView from './views/ProfileView'
 import RegisterView from './views/RegisterView'
 import LandingPage from './views/LandingPage'
-import CoursesView from './views/EstudentCourses/CoursesView';
+import CoursesView from './views/StudentCourses/CoursesView';
+import ChangePasswordView from './views/Account/ChangePasswordView';
+
 
 
 export default function Router() {
@@ -15,6 +17,7 @@ export default function Router() {
               <Route path='/profile' element={<ProfileView/>} />
               <Route path='/auth/register' element={<RegisterView />} />
               <Route path='/courses' element={<CoursesView />} />
+              <Route path='/change-password' element={<ChangePasswordView />} />
               <Route path='/' element={<LandingPage />} />
             </Routes>
         </BrowserRouter>
