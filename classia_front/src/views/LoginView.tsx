@@ -1,66 +1,97 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../auth/context'
+import getErrorMessage from '../auth/getErrorMessage'
+
+type LoginLocationState = {
+  from?: {
+    pathname?: string
+  }
+}
+
 export default function LoginView() {
-
-  const [user, setUser] = useState('')
+  const { signIn } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    console.log('Login con:', { user, password })
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      await signIn(email, password)
+      const state = location.state as LoginLocationState | null
+      const returnPath = state?.from?.pathname
+      const destination =
+        returnPath?.startsWith('/') && !returnPath.startsWith('//')
+          ? returnPath
+          : '/dashboard'
+      navigate(destination, { replace: true })
+    } catch (loginError: unknown) {
+      setError(getErrorMessage(loginError))
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-     <div className="min-h-screen flex items-center justify-center bg-[#123F36]">
-      <div className="bg-[#2A6B5C] rounded-2xl shadow-xl p-8 w-full max-w-sm">
-        <h1 className="text-[#E8DCC4] text-2xl font-bold mb-6 text-center">
+    <main className="flex min-h-screen items-center justify-center bg-verde-oscuro px-4">
+      <div className="w-full max-w-sm rounded-2xl bg-verde-medio p-8 shadow-xl">
+        <h1 className="mb-6 text-center text-2xl font-bold text-crema">
           Iniciar sesión
         </h1>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <div className="flex flex-col gap-1">
-            <label htmlFor="login-user" className="text-[#E8DCC4] text-sm font-medium">Usuario</label>
+            <label className="text-sm font-medium text-crema" htmlFor="login-email">
+              Correo electrónico
+            </label>
             <input
-              id="login-user"
-              type="text"
-              value={user}
-              onChange={(e) => setUser(e.target.value)}
-              className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
+              autoComplete="email"
+              className="rounded-lg bg-crema px-3 py-2 text-verde-oscuro outline-none focus:ring-2 focus:ring-dorado"
+              id="login-email"
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              type="email"
+              value={email}
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="login-password" className="text-[#E8DCC4] text-sm font-medium">Contraseña</label>
+            <label className="text-sm font-medium text-crema" htmlFor="login-password">
+              Contraseña
+            </label>
             <input
+              autoComplete="current-password"
+              className="rounded-lg bg-crema px-3 py-2 text-verde-oscuro outline-none focus:ring-2 focus:ring-dorado"
               id="login-password"
+              onChange={(e) => setPassword(e.target.value)}
+              required
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
             />
           </div>
 
+          {error && (
+            <p className="rounded-lg bg-crema px-3 py-2 text-sm text-red-800" role="alert">
+              {error}
+            </p>
+          )}
+
           <button
+            className="mt-2 rounded-lg bg-dorado py-2 font-semibold text-verde-oscuro transition hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
+            disabled={isSubmitting}
             type="submit"
-            className="bg-[#C49A45] text-[#123F36] font-semibold rounded-lg py-2 mt-2 hover:brightness-110 transition"
           >
-            Log in
-          </button>
-
-          <button
-            type="button"
-            className="text-[#E8DCC4] text-sm underline hover:text-[#C49A45] transition"
-          >
-            Registrarse
-          </button>
-
-          <button
-            type="button"
-            className="text-[#E8DCC4] text-sm underline hover:text-[#C49A45] transition"
-          >
-            Olvidé mi contraseña
+            {isSubmitting ? 'Ingresando...' : 'Iniciar sesión'}
           </button>
         </form>
       </div>
-    </div>
+    </main>
   )
 }
