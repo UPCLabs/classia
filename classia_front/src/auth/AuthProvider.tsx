@@ -9,7 +9,9 @@ function isUnauthenticatedError(error: unknown): error is ApiError {
     return false
   }
 
-  return ['401', 'UNAUTHORIZED', 'INVALID_TOKEN'].includes(String(error.code))
+  return ['401', '404', 'UNAUTHORIZED', 'INVALID_TOKEN'].includes(
+    String(error.code),
+  )
 }
 
 type AuthProviderProps = {

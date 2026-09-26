@@ -63,16 +63,37 @@ describe('LandingPage', () => {
 describe('Router', () => {
   it.each([
     ['/auth/login', 'Panel principal'],
-    ['/auth/register', 'Registro de usuario'],
     ['/profile', 'Guardar cambios'],
     ['/courses', 'Mis cursos'],
     ['/account/change-password', 'Cambiar contraseña'],
     ['/change-password', 'Cambiar contraseña'],
     ['/dashboard', 'Panel principal'],
+    ['/admin/users', 'Usuarios'],
+    ['/admin/users/new', 'Crear usuario'],
     ['/', 'Aprende, enseña y crece con Classia'],
   ])('renders %s', async (path, landmark) => {
+    if (path.startsWith('/admin/users')) {
+      apiMock.get
+        .mockResolvedValueOnce({ data: authenticatedUser })
+        .mockResolvedValueOnce({ data: { items: [] } })
+    }
     renderRouter(path)
-    expect(await screen.findByText(landmark)).toBeInTheDocument()
+    expect(
+      await screen.findByText(landmark, {
+        selector: path.endsWith('/new') ? 'h1' : undefined,
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('restricts user administration to administrator roles', async () => {
+    apiMock.get.mockResolvedValueOnce({
+      data: { ...authenticatedUser, role: 'Student' },
+    })
+
+    renderRouter('/admin/users')
+
+    expect(await screen.findByRole('heading', { name: 'Panel principal' }))
+      .toBeInTheDocument()
   })
 
   it('redirects protected routes to login without a session', async () => {

@@ -30,6 +30,7 @@ function renderLogin() {
           <Route path="/auth/login" element={<LoginView />} />
           <Route element={<AuthenticatedLayout />}>
             <Route path="/dashboard" element={<DashboardView />} />
+            <Route path="/admin/users" element={<h1>Usuarios</h1>} />
           </Route>
         </Routes>
       </AuthProvider>
@@ -42,6 +43,17 @@ beforeEach(() => {
 })
 
 describe('LoginView', () => {
+  it('shows the login form when the saved session belongs to a missing user', async () => {
+    apiMock.get.mockRejectedValueOnce({
+      code: '404',
+      message: 'User not found',
+    })
+    renderLogin()
+
+    expect(await screen.findByLabelText('Correo electrónico')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('signs in through the API and opens the dashboard', async () => {
     const user = userEvent.setup()
     apiMock.get
@@ -114,23 +126,30 @@ describe('LoginView', () => {
 })
 
 describe('RegisterView', () => {
-  it('edits and submits the registration fields', async () => {
+  it('creates the selected user through the API', async () => {
     const user = userEvent.setup()
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
-    render(<RegisterView />)
+    apiMock.post.mockResolvedValue({ data: { message: 'User created' } })
+    render(
+      <MemoryRouter initialEntries={['/admin/users/new']}>
+        <Routes>
+          <Route path="/admin/users/new" element={<RegisterView />} />
+          <Route path="/admin/users" element={<h1>Usuarios</h1>} />
+        </Routes>
+      </MemoryRouter>,
+    )
 
     await user.type(screen.getByLabelText('Nombre completo'), 'Ana Torres')
-    await user.type(screen.getByLabelText('Correo'), 'ana@example.com')
-    await user.type(screen.getByLabelText('Código'), 'A001')
-    await user.type(screen.getByLabelText('Carrera'), 'Sistemas')
-    await user.click(screen.getByRole('button', { name: 'Registrarse' }))
+    await user.type(screen.getByLabelText('Correo electrónico'), 'ana@example.com')
+    await user.type(screen.getByLabelText('Contraseña inicial'), 'clave-segura')
+    await user.selectOptions(screen.getByLabelText('Rol'), 'Teacher')
+    await user.click(screen.getByRole('button', { name: 'Crear usuario' }))
 
-    expect(consoleSpy).toHaveBeenCalledWith('Register with:', {
-      code: 'A001',
+    expect(apiMock.post).toHaveBeenCalledWith('/users/create', {
       name: 'Ana Torres',
       email: 'ana@example.com',
-      career: 'Sistemas',
+      password: 'clave-segura',
+      role: 'Teacher',
     })
-    consoleSpy.mockRestore()
+    expect(await screen.findByRole('heading', { name: 'Usuarios' })).toBeInTheDocument()
   })
 })
