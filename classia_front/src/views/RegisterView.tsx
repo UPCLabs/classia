@@ -1,76 +1,139 @@
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import httpClient from '../api/httpClient'
+import getErrorMessage from '../auth/getErrorMessage'
+import type { UserRole } from '../types/api'
 
 export default function RegisterView() {
-    const [code, setCode] = useState('')
-    const [name, setName] = useState('')
-    const [email, setEmail] = useState('')
-    const [career, setCareer] = useState('')
+  const navigate = useNavigate()
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState<UserRole>('Student')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault()
-        console.log('Register with:', { code, name, email, career })
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      await httpClient.post('/users/create', { name, email, password, role })
+      navigate('/admin/users', {
+        replace: true,
+        state: { message: 'El usuario se creó correctamente.' },
+      })
+    } catch (requestError: unknown) {
+      setError(getErrorMessage(requestError))
+    } finally {
+      setIsSubmitting(false)
     }
+  }
 
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-[#123F36]">
-            <div className="bg-[#2A6B5C] rounded-2xl shadow-xl p-8 w-full max-w-sm">
-                <h1 className="text-[#E8DCC4] text-2xl font-bold mb-6 text-center">
-                    Registro de usuario
-                </h1>
+  return (
+    <main className="flex min-h-full items-center justify-center px-4 py-10">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg sm:p-8">
+        <h1 className="mb-2 text-2xl font-bold text-verde-oscuro">
+          Crear usuario
+        </h1>
+        <p className="mb-6 text-verde-oscuro/70">
+          Registra un estudiante, docente o administrador en Classia.
+        </p>
 
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-1">
-                        <label htmlFor="register-name" className="text-[#E8DCC4] text-sm font-medium">Nombre completo</label>
-                        <input
-                            id="register-name"
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
-                        />
-                    </div>
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium" htmlFor="register-name">
+              Nombre completo
+            </label>
+            <input
+              autoComplete="name"
+              className="rounded-lg border border-verde-medio/30 bg-crema px-3 py-2 text-verde-oscuro outline-none focus:ring-2 focus:ring-dorado"
+              id="register-name"
+              maxLength={100}
+              minLength={1}
+              onChange={(event) => setName(event.target.value)}
+              required
+              type="text"
+              value={name}
+            />
+          </div>
 
-                    <div className="flex flex-col gap-1">
-                        <label htmlFor="register-email" className="text-[#E8DCC4] text-sm font-medium">Correo</label>
-                        <input
-                            id="register-email"
-                            type="text"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
-                        />
-                    </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium" htmlFor="register-email">
+              Correo electrónico
+            </label>
+            <input
+              autoComplete="email"
+              className="rounded-lg border border-verde-medio/30 bg-crema px-3 py-2 text-verde-oscuro outline-none focus:ring-2 focus:ring-dorado"
+              id="register-email"
+              onChange={(event) => setEmail(event.target.value)}
+              required
+              type="email"
+              value={email}
+            />
+          </div>
 
-                    <div className="flex flex-col gap-1">
-                        <label htmlFor="register-code" className="text-[#E8DCC4] text-sm font-medium">Código</label>
-                        <input
-                            id="register-code"
-                            type="text"
-                            value={code}
-                            onChange={(e) => setCode(e.target.value)}
-                            className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
-                        />
-                    </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium" htmlFor="register-password">
+              Contraseña inicial
+            </label>
+            <input
+              autoComplete="new-password"
+              className="rounded-lg border border-verde-medio/30 bg-crema px-3 py-2 text-verde-oscuro outline-none focus:ring-2 focus:ring-dorado"
+              id="register-password"
+              maxLength={20}
+              minLength={8}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              type="password"
+              value={password}
+            />
+            <span className="text-xs text-verde-oscuro/70">
+              Debe tener entre 8 y 20 caracteres.
+            </span>
+          </div>
 
-                    <div className="flex flex-col gap-1">
-                        <label htmlFor="register-career" className="text-[#E8DCC4] text-sm font-medium">Carrera</label>
-                        <input
-                            id="register-career"
-                            type="text"
-                            value={career}
-                            onChange={(e) => setCareer(e.target.value)}
-                            className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
-                        />
-                    </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium" htmlFor="register-role">
+              Rol
+            </label>
+            <select
+              className="rounded-lg border border-verde-medio/30 bg-crema px-3 py-2 text-verde-oscuro outline-none focus:ring-2 focus:ring-dorado"
+              id="register-role"
+              onChange={(event) => setRole(event.target.value as UserRole)}
+              value={role}
+            >
+              <option value="Student">Estudiante</option>
+              <option value="Teacher">Docente</option>
+              <option value="Admin">Administrador</option>
+              <option value="SuperAdmin">Superadministrador</option>
+            </select>
+          </div>
 
-                    <button
-                        type="submit"
-                        className="bg-[#C49A45] text-[#123F36] font-semibold rounded-lg py-2 mt-2 hover:brightness-110 transition"
-                    >
-                        Registrarse
-                    </button>
-                </form>
-            </div>
-        </div>
-    )
+          {error && (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">
+              {error}
+            </p>
+          )}
+
+          <div className="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Link
+              className="rounded-lg border border-verde-medio px-4 py-2 text-center font-semibold text-verde-oscuro"
+              to="/admin/users"
+            >
+              Cancelar
+            </Link>
+            <button
+              className="rounded-lg bg-dorado px-4 py-2 font-semibold text-verde-oscuro hover:brightness-110 disabled:opacity-60"
+              disabled={isSubmitting}
+              type="submit"
+            >
+              {isSubmitting ? 'Creando...' : 'Crear usuario'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </main>
+  )
 }

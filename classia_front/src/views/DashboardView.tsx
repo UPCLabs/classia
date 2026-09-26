@@ -53,12 +53,15 @@ export default function DashboardView() {
         )}
 
         {canManageUsers && (
-          <section className="rounded-xl border-l-4 border-dorado bg-white p-6 shadow-sm">
+          <Link
+            className="rounded-xl border-l-4 border-dorado bg-white p-6 shadow-sm transition hover:shadow-md"
+            to="/admin/users"
+          >
             <h2 className="text-xl font-bold">Administración</h2>
             <p className="mt-2 text-verde-oscuro/75">
-              La gestión de usuarios estará disponible próximamente.
+              Busca usuarios, edita sus datos y administra sus roles.
             </p>
-          </section>
+          </Link>
         )}
       </div>
     </main>
