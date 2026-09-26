@@ -1,6 +1,9 @@
-use serde::Deserialize;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use validator::Validate;
 
+use crate::users::User;
 use crate::users::models::UserRole;
 use crate::util::deserializers::{deserialize_optional_trimmed, deserialize_trimmed};
 
@@ -53,4 +56,36 @@ pub struct UpdateUserDto {
     pub email: Option<String>,
 
     pub role: Option<UserRole>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct UserResponseDto {
+    pub id: Uuid,
+    pub name: String,
+    pub email: String,
+    pub role: UserRole,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl From<User> for UserResponseDto {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            status: user.status,
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UserQueryParams {
+    pub q: Option<String>,
+    pub role: Option<UserRole>,
+    pub status: Option<String>,
 }

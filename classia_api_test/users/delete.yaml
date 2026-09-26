@@ -1,0 +1,3 @@
+name: Eliminar Usuario
+method: DELETE
+url: '{{BASE_URL}}/api/users/delete/01a0d538-e033-7779-b487-2bbac976084a'

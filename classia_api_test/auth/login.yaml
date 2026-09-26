@@ -1,6 +1,6 @@
 name: login
 method: POST
-url: '{{BASE_URL}}/auth/login'
+url: '{{BASE_URL}}/api/auth/login'
 body:
   type: json
   content: |-

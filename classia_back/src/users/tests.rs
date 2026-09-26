@@ -3,7 +3,6 @@ use serde_json::json;
 use validator::Validate;
 
 use super::{
-    api::can_create_user,
     dto::{ChangePasswordDto, UpdateUserDto, UserCreateDto},
     error::UserError,
     models::UserRole,
@@ -12,10 +11,11 @@ use crate::error::AppError;
 
 #[test]
 fn user_roles_enforce_create_user_permission() {
-    assert!(can_create_user(&UserRole::SuperAdmin));
-    assert!(can_create_user(&UserRole::Admin));
-    assert!(!can_create_user(&UserRole::Teacher));
-    assert!(!can_create_user(&UserRole::Student));
+    // Usamos el método nativo del enum directamente
+    assert!(UserRole::SuperAdmin.is_admin());
+    assert!(UserRole::Admin.is_admin());
+    assert!(!UserRole::Teacher.is_admin());
+    assert!(!UserRole::Student.is_admin());
 }
 
 #[test]

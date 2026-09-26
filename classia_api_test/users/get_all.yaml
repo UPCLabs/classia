@@ -1,0 +1,3 @@
+name: Listar y Filtrar Usuarios
+method: GET
+url: '{{BASE_URL}}/api/users?q=ada&role=Student&status=active'
