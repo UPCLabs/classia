@@ -9,6 +9,7 @@ import DashboardView from './views/DashboardView'
 import { AuthProvider } from './auth/AuthProvider'
 import ProtectedRoute from './auth/ProtectedRoute'
 import PublicOnlyRoute from './auth/PublicOnlyRoute'
+import AuthenticatedLayout from './layouts/AuthenticatedLayout'
 
 export default function Router() {
   return (
@@ -24,53 +25,32 @@ export default function Router() {
             }
           />
           <Route
-            path="/auth/register"
-            element={
-              <ProtectedRoute allowedRoles={['SuperAdmin', 'Admin']}>
-                <RegisterView />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard"
             element={
               <ProtectedRoute>
-                <DashboardView />
+                <AuthenticatedLayout />
               </ProtectedRoute>
             }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfileView />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/account/change-password"
-            element={
-              <ProtectedRoute>
-                <ChangePasswordView />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/change-password"
-            element={
-              <ProtectedRoute>
-                <ChangePasswordView />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/courses"
-            element={
-              <ProtectedRoute>
-                <CoursesView />
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route
+              path="/auth/register"
+              element={
+                <ProtectedRoute allowedRoles={['SuperAdmin', 'Admin']}>
+                  <RegisterView />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/dashboard" element={<DashboardView />} />
+            <Route path="/profile" element={<ProfileView />} />
+            <Route
+              path="/account/change-password"
+              element={<ChangePasswordView />}
+            />
+            <Route
+              path="/change-password"
+              element={<ChangePasswordView />}
+            />
+            <Route path="/courses" element={<CoursesView />} />
+          </Route>
           <Route path="/" element={<LandingPage />} />
         </Routes>
       </AuthProvider>

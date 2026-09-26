@@ -1,102 +1,117 @@
-import { useForm } from 'react-hook-form'
+import { useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
+import httpClient from '../../api/httpClient'
+import { useAuth } from '../../auth/context'
+import getErrorMessage from '../../auth/getErrorMessage'
 
-interface ChangePasswordForm {
-  currentPassword: string
+type ChangePasswordForm = {
   newPassword: string
   confirmationPassword: string
 }
 
 export default function ChangePasswordView() {
+  const { signOut } = useAuth()
+  const navigate = useNavigate()
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const {
+    control,
     register,
     handleSubmit,
-    watch,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<ChangePasswordForm>()
+  const newPassword = useWatch({ control, name: 'newPassword' })
 
-  const onSubmit = (data: ChangePasswordForm) => {
-    console.log(data)
+  async function onSubmit(data: ChangePasswordForm) {
+    setSubmitError(null)
+
+    try {
+      await httpClient.patch<void>('/users/change-password', {
+        new_password: data.newPassword,
+      })
+      await signOut()
+      navigate('/auth/login', { replace: true })
+    } catch (error: unknown) {
+      setSubmitError(getErrorMessage(error))
+    }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#123F36]">
-      <div className="bg-[#2A6B5C] rounded-2xl shadow-xl p-8 w-full max-w-sm">
-        <h1 className="text-[#E8DCC4] text-2xl font-bold mb-6 text-center">
+    <main className="flex min-h-screen items-center justify-center bg-verde-oscuro px-4">
+      <div className="w-full max-w-sm rounded-2xl bg-verde-medio p-8 shadow-xl">
+        <h1 className="mb-6 text-center text-2xl font-bold text-crema">
           Cambiar contraseña
         </h1>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={handleSubmit(onSubmit)}
+        >
           <div className="flex flex-col gap-1">
-            <label className="text-[#E8DCC4] text-sm font-medium">
-              Contraseña actual
-            </label>
-            <input
-              type="password"
-              {...register('currentPassword', {
-                required: 'Este campo es obligatorio',
-              })}
-              className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
-            />
-            {errors.currentPassword && (
-              <span className="text-red-300 text-xs">
-                {errors.currentPassword.message}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-[#E8DCC4] text-sm font-medium">
+            <label className="text-sm font-medium text-crema" htmlFor="new-password">
               Nueva contraseña
             </label>
             <input
-              type="password"
+              autoComplete="new-password"
+              className="rounded-lg bg-crema px-3 py-2 text-verde-oscuro outline-none focus:ring-2 focus:ring-dorado"
+              id="new-password"
               {...register('newPassword', {
                 required: 'Este campo es obligatorio',
+                minLength: {
+                  value: 8,
+                  message: 'La contraseña debe tener al menos 8 caracteres',
+                },
+                maxLength: {
+                  value: 20,
+                  message: 'La contraseña no puede superar 20 caracteres',
+                },
               })}
-              className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
+              type="password"
             />
             {errors.newPassword && (
-              <span className="text-red-300 text-xs">
+              <span className="text-xs text-red-200" role="alert">
                 {errors.newPassword.message}
               </span>
             )}
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[#E8DCC4] text-sm font-medium">
+            <label className="text-sm font-medium text-crema" htmlFor="confirmation-password">
               Confirmar contraseña
             </label>
             <input
-              type="password"
+              autoComplete="new-password"
+              className="rounded-lg bg-crema px-3 py-2 text-verde-oscuro outline-none focus:ring-2 focus:ring-dorado"
+              id="confirmation-password"
               {...register('confirmationPassword', {
                 required: 'Este campo es obligatorio',
                 validate: (value) =>
-                  value === watch('newPassword') || 'Las contraseñas no coinciden',
+                  value === newPassword || 'Las contraseñas no coinciden',
               })}
-              className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
+              type="password"
             />
             {errors.confirmationPassword && (
-              <span className="text-red-300 text-xs">
+              <span className="text-xs text-red-200" role="alert">
                 {errors.confirmationPassword.message}
               </span>
             )}
           </div>
 
-          <button
-            type="submit"
-            className="bg-[#C49A45] text-[#123F36] font-semibold rounded-lg py-2 mt-2 hover:brightness-110 transition"
-          >
-            Guardar cambios
-          </button>
+          {submitError && (
+            <p className="rounded-lg bg-crema px-3 py-2 text-sm text-red-800" role="alert">
+              {submitError}
+            </p>
+          )}
 
           <button
-            type="button"
-            className="text-[#E8DCC4] text-sm underline hover:text-[#C49A45] transition"
+            className="mt-2 rounded-lg bg-dorado py-2 font-semibold text-verde-oscuro transition hover:brightness-110 disabled:cursor-wait disabled:opacity-70"
+            disabled={isSubmitting}
+            type="submit"
           >
-            Cancelar
+            {isSubmitting ? 'Guardando...' : 'Guardar cambios'}
           </button>
         </form>
       </div>
-    </div>
+    </main>
   )
 }

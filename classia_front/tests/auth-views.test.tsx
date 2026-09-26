@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from '../src/auth/AuthProvider'
+import AuthenticatedLayout from '../src/layouts/AuthenticatedLayout'
 import DashboardView from '../src/views/DashboardView'
 import LoginView from '../src/views/LoginView'
 import RegisterView from '../src/views/RegisterView'
@@ -27,7 +28,9 @@ function renderLogin() {
       <AuthProvider>
         <Routes>
           <Route path="/auth/login" element={<LoginView />} />
-          <Route path="/dashboard" element={<DashboardView />} />
+          <Route element={<AuthenticatedLayout />}>
+            <Route path="/dashboard" element={<DashboardView />} />
+          </Route>
         </Routes>
       </AuthProvider>
     </MemoryRouter>,
@@ -60,6 +63,11 @@ describe('LoginView', () => {
     })
     expect(await screen.findByRole('heading', { name: 'Panel principal' }))
       .toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Abrir menú de ajustes' }))
+    expect(screen.getByRole('link', { name: 'Cambiar contraseña' })).toHaveAttribute(
+      'href',
+      '/account/change-password',
+    )
   })
 
   it('shows an API error when the credentials are rejected', async () => {
@@ -97,7 +105,8 @@ describe('LoginView', () => {
     await user.type(screen.getByLabelText('Correo electrónico'), 'ana@example.com')
     await user.type(screen.getByLabelText('Contraseña'), 'secret')
     await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }))
-    await user.click(await screen.findByRole('button', { name: 'Cerrar sesión' }))
+    await user.click(await screen.findByRole('button', { name: 'Abrir menú de ajustes' }))
+    await user.click(screen.getByRole('button', { name: 'Cerrar sesión' }))
 
     expect(apiMock.post).toHaveBeenNthCalledWith(2, '/auth/logout')
     expect(await screen.findByLabelText('Correo electrónico')).toBeInTheDocument()
