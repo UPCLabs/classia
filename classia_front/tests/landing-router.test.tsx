@@ -27,6 +27,11 @@ beforeEach(() => {
 function renderRouter(path: string) {
   window.history.pushState({}, '', path)
   const client = new QueryClient()
+  if (path === '/courses') {
+    apiMock.get
+      .mockResolvedValueOnce({ data: authenticatedUser })
+      .mockResolvedValueOnce({ data: { items: [] } })
+  }
   return render(
     <QueryClientProvider client={client}>
       <Router />
@@ -64,7 +69,7 @@ describe('Router', () => {
   it.each([
     ['/auth/login', 'Panel principal'],
     ['/profile', 'Guardar cambios'],
-    ['/courses', 'Mis cursos'],
+    ['/courses', 'Cursos'],
     ['/account/change-password', 'Cambiar contraseña'],
     ['/change-password', 'Cambiar contraseña'],
     ['/dashboard', 'Panel principal'],

@@ -4,6 +4,9 @@ import ProfileView from './views/ProfileView'
 import LandingPage from './views/LandingPage'
 import RegisterView from './views/RegisterView'
 import CoursesView from './views/StudentCourses/CoursesView'
+import CourseCreateView from './views/StudentCourses/CourseCreateView'
+import CourseDetailView from './views/StudentCourses/CourseDetailView'
+import CourseEditView from './views/StudentCourses/CourseEditView'
 import ChangePasswordView from './views/Account/ChangePasswordView'
 import DashboardView from './views/DashboardView'
 import { AuthProvider } from './auth/AuthProvider'
@@ -68,6 +71,27 @@ export default function Router() {
               element={<ChangePasswordView />}
             />
             <Route path="/courses" element={<CoursesView />} />
+            <Route
+              path="/courses/new"
+              element={
+                <ProtectedRoute
+                  allowedRoles={['Teacher', 'Admin', 'SuperAdmin']}
+                >
+                  <CourseCreateView />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/courses/:courseId" element={<CourseDetailView />} />
+            <Route
+              path="/courses/:courseId/edit"
+              element={
+                <ProtectedRoute
+                  allowedRoles={['Teacher', 'Admin', 'SuperAdmin']}
+                >
+                  <CourseEditView />
+                </ProtectedRoute>
+              }
+            />
           </Route>
           <Route path="/" element={<LandingPage />} />
         </Routes>
