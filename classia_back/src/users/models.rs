@@ -23,3 +23,13 @@ pub struct User {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+
+impl UserRole {
+    pub fn is_admin(&self) -> bool {
+        matches!(self, UserRole::SuperAdmin | UserRole::Admin)
+    }
+
+    pub fn can_assign_role(&self, role: &UserRole) -> bool {
+        *self == UserRole::SuperAdmin || *role != UserRole::SuperAdmin
+    }
+}

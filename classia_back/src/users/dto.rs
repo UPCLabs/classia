@@ -82,3 +82,10 @@ impl From<User> for UserResponseDto {
         }
     }
 }
+
+#[derive(Debug, Deserialize)]
+pub struct UserQueryParams {
+    pub q: Option<String>,
+    pub role: Option<UserRole>,
+    pub status: Option<String>,
+}

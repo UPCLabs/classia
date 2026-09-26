@@ -1,13 +1,11 @@
 use axum::{
-    Json, Router, extract::{Path, State}, http::StatusCode, routing::{delete, get, patch, post},
+    Json, Router, extract::{Path, Query, State}, http::StatusCode, routing::{delete, get, patch, post},
 };
 use serde_json::{Value, json};
 use uuid::Uuid;
 
 use crate::{
-    auth::AuthenticatedUser, error::AppError, state::ClassiaState, users::{
-        UserRole, dto::{ChangePasswordDto, UpdateUserDto, UserCreateDto, UserResponseDto},
-    },
+    auth::AuthenticatedUser, error::AppError, state::ClassiaState, users::dto::{ChangePasswordDto, UpdateUserDto, UserCreateDto, UserQueryParams, UserResponseDto},
 };
 
 pub fn route() -> Router<ClassiaState> {
@@ -16,11 +14,7 @@ pub fn route() -> Router<ClassiaState> {
         .route("/change-password", patch(change_password))
         .route("/update/{id}", patch(update_user))
         .route("/delete/{id}", delete(delete_user))
-        .route("/getAll", get(list_users))
-}
-
-pub(super) fn can_create_user(role: &UserRole) -> bool {
-    matches!(role, UserRole::SuperAdmin | UserRole::Admin)
+        .route("/", get(list_users))
 }
 
 async fn create_user(
@@ -28,11 +22,11 @@ async fn create_user(
     user: AuthenticatedUser,
     Json(body): Json<UserCreateDto>,
 ) -> Result<Json<Value>, AppError> {
-    if !can_create_user(&user.role) {
+    if !user.role.is_admin() {
         return Err(AppError::forbidden());
     }
 
-    let _ = service.user_service.create_user(body).await?;
+    let _ = service.user_service.create_user(body, user.role).await?;
 
     Ok(Json(json!({
         "message": "User created"
@@ -54,11 +48,11 @@ async fn update_user(
     Path(id): Path<Uuid>,
     Json(body): Json<UpdateUserDto>,
 ) -> Result<Json<Value>, AppError> {
-    if !can_create_user(&user.role) {
+    if !user.role.is_admin() {
         return Err(AppError::forbidden());
     }
 
-    let _ = state.user_service.update_user(id, body).await?;
+    let _ = state.user_service.update_user(id, body, user.role).await?;
 
     Ok(Json(json!({
         "message": "User updated"
@@ -70,29 +64,30 @@ async fn delete_user(
     user: AuthenticatedUser,
     Path(id): Path<Uuid>,
 ) -> Result<Json<Value>, AppError> {
-    if !can_create_user(&user.role) {
+    if !user.role.is_admin() {
         return Err(AppError::forbidden());
     }
 
     state.user_service.delete_user(id).await?;
 
     Ok(Json(json!({
-        "message": "User deleted"
+        "message": "User deactivated"
     })))
 }
 
 async fn list_users(
     State(state): State<ClassiaState>,
     user: AuthenticatedUser,
+    Query(params): Query<UserQueryParams>, 
 ) -> Result<Json<Value>, AppError> {
-
-    if !can_create_user(&user.role) {
+    if !user.role.is_admin() {
         return Err(AppError::forbidden());
     }
 
-    let users = state.user_service.list_users().await?;
+
+    let users = state.user_service.list_users(params).await?;
 
     let users_dto: Vec<UserResponseDto> = users.into_iter().map(|u| u.into()).collect();
 
-    Ok(Json(json!(users_dto)))
+    Ok(Json(json!({ "items": users_dto })))
 }

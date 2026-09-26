@@ -169,10 +169,26 @@ impl UserRepository {
         Ok(())
     }
 
-    pub async fn list_users(&self) -> Result<Vec<User>, sqlx::Error> {
+    pub async fn list_users(
+        &self,
+        q: Option<String>,
+        role: Option<UserRole>,
+        status: Option<String>,
+    ) -> Result<Vec<User>, sqlx::Error> {
         query_as::<_, User>(
-        "SELECT id, name, email, password, role, status, token, created_at, updated_at FROM users ORDER BY created_at DESC"
+            r#"
+        SELECT id, name, email, password, role, status, token, created_at, updated_at
+        FROM users
+        WHERE
+            ($1::text IS NULL OR name ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%') AND
+            ($2::user_role IS NULL OR role = $2) AND
+            ($3::text IS NULL OR status = $3)
+        ORDER BY created_at DESC
+        "#,
         )
+        .bind(q)
+        .bind(role)
+        .bind(status)
         .fetch_all(&self.pool)
         .await
     }
