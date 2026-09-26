@@ -13,6 +13,7 @@ const courseFormValues = (course: Curso): CourseFormValues => ({
   name: course.name,
   code: course.code,
   teacher_id: course.teacher.id,
+  password: '',
   status: course.status,
   capacity: course.capacity,
 })

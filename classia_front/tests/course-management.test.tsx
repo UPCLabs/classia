@@ -77,22 +77,32 @@ beforeEach(() => {
 describe('CourseCreateView', () => {
   it('submits course data with the authenticated teacher as owner', async () => {
     const user = userEvent.setup()
-    apiMock.post.mockResolvedValue({ data: { id: 'course-1' } })
+    apiMock.post.mockResolvedValue({
+      data: { id: 'course-1', name: 'Programación', code: 'PRG101' },
+    })
     renderCourseView(<CourseCreateView />, 'Teacher', '/courses/new')
 
     await user.type(screen.getByLabelText('Nombre'), 'Programación')
     await user.type(screen.getByLabelText('Código'), 'PRG101')
+    await user.type(
+      screen.getByLabelText('Contraseña del curso'),
+      'course-password',
+    )
     await user.clear(screen.getByLabelText('Cupo'))
     await user.type(screen.getByLabelText('Cupo'), '25')
     await user.click(screen.getByRole('button', { name: 'Crear curso' }))
 
-    expect(apiMock.post).toHaveBeenCalledWith('/courses', {
+    expect(apiMock.post).toHaveBeenCalledWith('/courses/create', {
       name: 'Programación',
       code: 'PRG101',
       teacher_id: 'teacher-1',
+      password: 'course-password',
       status: 'active',
-      capacity: 25,
+      quantity: 25,
     })
+    expect(
+      await screen.findByText('Curso creado correctamente'),
+    ).toBeInTheDocument()
   })
 })
 

@@ -7,6 +7,10 @@ import type { Curso, ListResponse } from '../../types/api'
 
 export default function CoursesView() {
   const { user } = useAuth()
+  const canCreateCourse =
+    user?.role === 'Teacher' ||
+    user?.role === 'Admin' ||
+    user?.role === 'SuperAdmin'
   const coursesQuery = useQuery({
     queryKey: ['courses'],
     queryFn: async () => {
@@ -22,6 +26,22 @@ export default function CoursesView() {
   if (coursesQuery.error) {
     return (
       <main className="mx-auto max-w-5xl px-4 py-10">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Cursos</h1>
+            <p className="mt-2 text-verde-oscuro/70">
+              No se pudo cargar el listado de cursos.
+            </p>
+          </div>
+          {canCreateCourse && (
+            <Link
+              className="rounded-lg bg-dorado px-5 py-3 text-center font-semibold text-verde-oscuro"
+              to="/courses/new"
+            >
+              Crear curso
+            </Link>
+          )}
+        </div>
         <p className="rounded-lg bg-red-50 p-4 text-red-800" role="alert">
           {getErrorMessage(coursesQuery.error)}
         </p>
@@ -30,10 +50,6 @@ export default function CoursesView() {
   }
 
   const courses = coursesQuery.data ?? []
-  const canCreateCourse =
-    user?.role === 'Teacher' ||
-    user?.role === 'Admin' ||
-    user?.role === 'SuperAdmin'
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">

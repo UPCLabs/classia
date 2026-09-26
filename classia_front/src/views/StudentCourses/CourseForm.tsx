@@ -5,6 +5,7 @@ export type CourseFormValues = {
   name: string
   code: string
   teacher_id: string
+  password: string
   status: CourseStatus
   capacity: number
 }
@@ -13,6 +14,7 @@ type CourseFormProps = {
   initialValues: CourseFormValues
   teachers: Usuario[]
   assignedTeacher?: Usuario
+  requireCoursePassword?: boolean
   teacherLocked: boolean
   isSubmitting: boolean
   submitError: string | null
@@ -24,6 +26,7 @@ export default function CourseForm({
   initialValues,
   teachers,
   assignedTeacher,
+  requireCoursePassword = false,
   teacherLocked,
   isSubmitting,
   submitError,
@@ -118,6 +121,24 @@ export default function CourseForm({
           <p className="text-sm text-red-800">{errors.teacher_id.message}</p>
         )}
       </div>
+
+      {requireCoursePassword && (
+        <div className="grid gap-1">
+          <label htmlFor="course-password">Contraseña del curso</label>
+          <input
+            autoComplete="new-password"
+            className="rounded-lg border border-verde-medio/30 bg-crema px-3 py-2"
+            id="course-password"
+            type="password"
+            {...register('password', {
+              required: 'La contraseña del curso es obligatoria',
+            })}
+          />
+          {errors.password && (
+            <p className="text-sm text-red-800">{errors.password.message}</p>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-1">
         <label htmlFor="course-status">Estado</label>
