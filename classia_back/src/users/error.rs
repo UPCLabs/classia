@@ -7,6 +7,7 @@ pub enum UserError {
     UserNotFound,
     EmailAlreadyExists,
     InvalidCredentials,
+    Forbidden(String),
     ValidationError(String),
     InternalError(String),
     Database(sqlx::Error),
@@ -37,6 +38,11 @@ impl From<UserError> for AppError {
                 status: StatusCode::UNAUTHORIZED,
                 code: "INVALID_CREDENTIALS",
                 message: "Contraseña incorrecta ".to_string(),
+            },
+            UserError::Forbidden(message) => AppError {
+                status: StatusCode::FORBIDDEN,
+                code: "FORBIDDEN",
+                message,
             },
             UserError::ValidationError(message) => AppError {
                 status: StatusCode::BAD_REQUEST,

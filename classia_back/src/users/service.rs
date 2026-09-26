@@ -3,7 +3,8 @@ use validator::Validate;
 
 use crate::{
     users::{
-        dto::{ChangePasswordDto, UpdateUserDto, UserCreateDto},
+        UserRole,
+        dto::{ChangePasswordDto, UpdateUserDto, UserCreateDto, UserQueryParams},
         error::UserError,
         models::User,
         repository::UserRepository,
@@ -46,9 +47,19 @@ impl UserService {
         }
     }
 
-    pub async fn create_user(&self, body: UserCreateDto) -> Result<User, UserError> {
+    pub async fn create_user(
+        &self,
+        body: UserCreateDto,
+        caller_role: UserRole,
+    ) -> Result<User, UserError> {
         body.validate()
             .map_err(|errors| UserError::ValidationError(validation_message(errors)))?;
+
+        if !caller_role.can_assign_role(&body.role) {
+            return Err(UserError::Forbidden(
+                "Admins cannot create a SuperAdmin".into(),
+            ));
+        }
 
         let exists = self
             .user_repository
@@ -96,9 +107,30 @@ impl UserService {
             .map_err(UserError::Database)
     }
 
-    pub async fn update_user(&self, id_user: Uuid, body: UpdateUserDto) -> Result<User, UserError> {
+    pub async fn update_user(
+        &self,
+        id_user: Uuid,
+        body: UpdateUserDto,
+        caller_role: UserRole,
+    ) -> Result<User, UserError> {
         body.validate()
             .map_err(|errors| UserError::ValidationError(validation_message(errors)))?;
+
+        let target = self
+            .user_repository
+            .get_user_by_id(id_user)
+            .await
+            .map_err(UserError::Database)?
+            .ok_or(UserError::UserNotFound)?;
+
+        if let Some(new_role) = &body.role {
+            if !caller_role.can_assign_role(new_role) || !caller_role.can_assign_role(&target.role)
+            {
+                return Err(UserError::Forbidden(
+                    "Admins cannot grant or modify the SuperAdmin role".into(),
+                ));
+            }
+        }
 
         if let Some(email) = &body.email {
             let existing = self
@@ -131,10 +163,25 @@ impl UserService {
             })
     }
 
-    pub async fn list_users(&self) -> Result<Vec<User>, UserError> {
+    pub async fn list_users(&self, params: UserQueryParams) -> Result<Vec<User>, UserError> {
+        let q = params
+            .q
+            .map(|q| q.trim().to_string())
+            .filter(|q| !q.is_empty());
+
+        let status = match params.status.as_deref() {
+            Some("active") | Some("inactive") | None => params.status,
+            Some(_) => {
+                return Err(UserError::ValidationError(
+                    "status: must be 'active' or 'inactive'".into(),
+                ));
+            }
+        };
+
         self.user_repository
-            .list_users()
+            .list_users(q, params.role, status)
             .await
             .map_err(UserError::Database)
     }
+
 }

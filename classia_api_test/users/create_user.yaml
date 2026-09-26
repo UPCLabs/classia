@@ -1,12 +1,12 @@
 name: create user
 method: POST
-url: '{{BASE_URL}}/users/create'
+url: '{{BASE_URL}}/api/users/create'
 body:
   type: json
   content: |-
     {
-      "name": "Nuevo Estudiante",
-      "email": "estudiante@grupo4.org",
+      "name": "Nuevo Estudiante2",
+      "email": "estudiante2@grupo4.org",
       "password": "Password123*",
       "role": "Student"
     }
