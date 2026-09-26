@@ -1,100 +1,169 @@
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useForm } from 'react-hook-form'
+import type { CourseStatus, Usuario } from '../../types/api'
 
-interface CourseFormData {
-  name: string;
-  code: number;
-  teacher_id: number;
-  status: string;
-  capacity: number;
+export type CourseFormValues = {
+  name: string
+  code: string
+  teacher_id: string
+  status: CourseStatus
+  capacity: number
 }
 
-interface CourseFormProps {
-  mode: 'create' | 'edit';
-  defaultValues?: CourseFormData;
+type CourseFormProps = {
+  initialValues: CourseFormValues
+  teachers: Usuario[]
+  assignedTeacher?: Usuario
+  teacherLocked: boolean
+  isSubmitting: boolean
+  submitError: string | null
+  submitLabel: string
+  onSubmit: (values: CourseFormValues) => Promise<void>
 }
 
-export default function CourseForm({ mode, defaultValues }: CourseFormProps) {
+export default function CourseForm({
+  initialValues,
+  teachers,
+  assignedTeacher,
+  teacherLocked,
+  isSubmitting,
+  submitError,
+  submitLabel,
+  onSubmit,
+}: CourseFormProps) {
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<CourseFormData>({ defaultValues });
-
-  const onSubmit: SubmitHandler<CourseFormData> = (data) => {
-    console.log("Datos enviados:", data);
-  };
+  } = useForm<CourseFormValues>({ defaultValues: initialValues })
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#123F36]">
-      <div className="bg-[#2A6B5C] rounded-2xl shadow-xl p-8 w-full max-w-sm">
-        <h1 className="text-[#E8DCC4] text-2xl font-bold mb-6 text-center">
-          {mode === 'create' ? 'Crear curso' : 'Editar curso'}
-        </h1>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-[#E8DCC4] text-sm font-medium">Nombre</label>
-            <input
-              type="text"
-              {...register("name", { required: "El nombre es obligatorio" })}
-              className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
-            />
-            {errors.name && <span className="text-red-300 text-xs">{errors.name.message}</span>}
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-[#E8DCC4] text-sm font-medium">Código</label>
-            <input
-              type="number"
-              {...register("code", { valueAsNumber: true, required: "El código es obligatorio" })}
-              className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
-            />
-            {errors.code && <span className="text-red-300 text-xs">{errors.code.message}</span>}
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-[#E8DCC4] text-sm font-medium">ID del profesor</label>
-            <input
-              type="number"
-              {...register("teacher_id", { valueAsNumber: true, required: "El ID del profesor es obligatorio" })}
-              className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
-            />
-            {errors.teacher_id && <span className="text-red-300 text-xs">{errors.teacher_id.message}</span>}
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-[#E8DCC4] text-sm font-medium">Estado</label>
-            <input
-              type="text"
-              {...register("status", { required: "El estado es obligatorio" })}
-              className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
-            />
-            {errors.status && <span className="text-red-300 text-xs">{errors.status.message}</span>}
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="text-[#E8DCC4] text-sm font-medium">Capacidad</label>
-            <input
-              type="number"
-              {...register("capacity", {
-                valueAsNumber: true,
-                required: "La capacidad es obligatoria",
-                min: { value: 1, message: "Debe ser mayor a 0" },
-              })}
-              className="bg-[#E8DCC4] text-[#123F36] rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-[#C49A45]"
-            />
-            {errors.capacity && <span className="text-red-300 text-xs">{errors.capacity.message}</span>}
-          </div>
-
-          <button type="submit" className="bg-[#C49A45] text-[#123F36] font-semibold rounded-lg py-2 mt-2 hover:brightness-110 transition">
-            {mode === 'create' ? 'Crear curso' : 'Guardar cambios'}
-          </button>
-
-          <button type="button" className="text-[#E8DCC4] text-sm underline hover:text-[#C49A45] transition">
-            Cancelar
-          </button>
-        </form>
+    <form
+      className="grid gap-5 rounded-xl bg-white p-6 shadow-sm"
+      onSubmit={handleSubmit(onSubmit)}
+    >
+      <div className="grid gap-1">
+        <label htmlFor="course-name">Nombre</label>
+        <input
+          className="rounded-lg border border-verde-medio/30 bg-crema px-3 py-2"
+          id="course-name"
+          maxLength={150}
+          minLength={1}
+          {...register('name', {
+            required: 'El nombre es obligatorio',
+            maxLength: {
+              value: 150,
+              message: 'El nombre no puede superar 150 caracteres',
+            },
+          })}
+        />
+        {errors.name && (
+          <p className="text-sm text-red-800">{errors.name.message}</p>
+        )}
       </div>
-    </div>
-  );
+
+      <div className="grid gap-1">
+        <label htmlFor="course-code">Código</label>
+        <input
+          className="rounded-lg border border-verde-medio/30 bg-crema px-3 py-2 uppercase"
+          id="course-code"
+          maxLength={6}
+          minLength={1}
+          {...register('code', {
+            required: 'El código es obligatorio',
+            maxLength: {
+              value: 6,
+              message: 'El código no puede superar 6 caracteres',
+            },
+          })}
+        />
+        {errors.code && (
+          <p className="text-sm text-red-800">{errors.code.message}</p>
+        )}
+      </div>
+
+      <div className="grid gap-1">
+        <label htmlFor="course-teacher">Docente</label>
+        {teacherLocked ? (
+          <>
+            <input
+              className="rounded-lg border border-verde-medio/30 bg-crema px-3 py-2"
+              disabled
+              id="course-teacher"
+              value={assignedTeacher?.name ?? ''}
+            />
+            <input
+              type="hidden"
+              {...register('teacher_id', { required: 'El docente es obligatorio' })}
+            />
+          </>
+        ) : (
+          <select
+            className="rounded-lg border border-verde-medio/30 bg-crema px-3 py-2"
+            id="course-teacher"
+            {...register('teacher_id', {
+              required: 'Selecciona un docente',
+            })}
+          >
+            <option value="">Seleccionar docente</option>
+            {teachers
+              .filter((teacher) => teacher.role === 'Teacher')
+              .map((teacher) => (
+                <option key={teacher.id} value={teacher.id}>
+                  {teacher.name} ({teacher.email})
+                </option>
+              ))}
+          </select>
+        )}
+        {errors.teacher_id && (
+          <p className="text-sm text-red-800">{errors.teacher_id.message}</p>
+        )}
+      </div>
+
+      <div className="grid gap-1">
+        <label htmlFor="course-status">Estado</label>
+        <select
+          className="rounded-lg border border-verde-medio/30 bg-crema px-3 py-2"
+          id="course-status"
+          {...register('status', { required: 'Selecciona un estado' })}
+        >
+          <option value="active">Activo</option>
+          <option value="inactive">Inactivo</option>
+        </select>
+      </div>
+
+      <div className="grid gap-1">
+        <label htmlFor="course-capacity">Cupo</label>
+        <input
+          className="rounded-lg border border-verde-medio/30 bg-crema px-3 py-2"
+          id="course-capacity"
+          max={32767}
+          min={1}
+          type="number"
+          {...register('capacity', {
+            valueAsNumber: true,
+            required: 'El cupo es obligatorio',
+            min: { value: 1, message: 'El cupo debe ser mayor a cero' },
+            max: { value: 32767, message: 'El cupo excede el máximo permitido' },
+          })}
+        />
+        {errors.capacity && (
+          <p className="text-sm text-red-800">{errors.capacity.message}</p>
+        )}
+      </div>
+
+      {submitError && (
+        <p className="rounded-lg bg-red-50 p-3 text-red-800" role="alert">
+          {submitError}
+        </p>
+      )}
+
+      <button
+        className="rounded-lg bg-dorado px-4 py-3 font-semibold text-verde-oscuro disabled:opacity-60"
+        disabled={isSubmitting}
+        type="submit"
+      >
+        {isSubmitting ? 'Guardando...' : submitLabel}
+      </button>
+    </form>
+  )
 }

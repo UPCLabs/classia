@@ -1,72 +1,82 @@
-import { useEffect, useState } from 'react'
-
-interface Course {
-  id: number
-  name: string
-}
-
-interface Student {
-  name: string
-  code: string
-}
+import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
+import httpClient from '../../api/httpClient'
+import { useAuth } from '../../auth/context'
+import getErrorMessage from '../../auth/getErrorMessage'
+import type { Curso, ListResponse } from '../../types/api'
 
 export default function CoursesView() {
-  const [student, setStudent] = useState<Student | null>(null)
+  const { user } = useAuth()
+  const coursesQuery = useQuery({
+    queryKey: ['courses'],
+    queryFn: async () => {
+      const { data } = await httpClient.get<ListResponse<Curso>>('/courses')
+      return data.items
+    },
+  })
 
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      setStudent({
-        name: 'Juan Pérez',
-        code: 'A00123456',
-      })
-    }, 0)
+  if (coursesQuery.isLoading) {
+    return <p className="p-10 text-center" role="status">Cargando cursos...</p>
+  }
 
-    return () => window.clearTimeout(timeout)
-  }, [])
-
-  const courses: Course[] = [
-    { id: 1, name: 'Programación Orientada a Objetos' },
-    { id: 2, name: 'Bases de Datos I' },
-    { id: 3, name: 'Cálculo Integral' },
-  ]
-
-  if (!student) {
+  if (coursesQuery.error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#123F36]">
-        <p className="text-[#E8DCC4]">Cargando...</p>
-      </div>
+      <main className="mx-auto max-w-5xl px-4 py-10">
+        <p className="rounded-lg bg-red-50 p-4 text-red-800" role="alert">
+          {getErrorMessage(coursesQuery.error)}
+        </p>
+      </main>
     )
   }
 
-return (
-  <div className="min-h-screen bg-[#123F36]">
-    <header className="bg-[#2A6B5C] px-6 py-4 flex justify-between items-center shadow-md border-b-2 border-[#C49A45]">
-      <h1 className="text-[#E8DCC4] font-semibold text-lg">
-        {student.name}
-      </h1>
-      <span className="text-[#C49A45] text-sm font-medium">
-        {student.code}
-      </span>
-    </header>
+  const courses = coursesQuery.data ?? []
+  const canCreateCourse =
+    user?.role === 'Teacher' ||
+    user?.role === 'Admin' ||
+    user?.role === 'SuperAdmin'
 
-    <div className="flex justify-center py-10 px-4">
-      <div className="w-full max-w-md">
-        <h2 className="text-[#E8DCC4] text-xl font-bold mb-4 border-l-4 border-[#C49A45] pl-3">
-          Mis cursos
-        </h2>
+  return (
+    <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Cursos</h1>
+          <p className="mt-2 text-verde-oscuro/70">
+            Consulta los cursos disponibles para tu cuenta.
+          </p>
+        </div>
+        {canCreateCourse && (
+          <Link
+            className="rounded-lg bg-dorado px-5 py-3 text-center font-semibold text-verde-oscuro"
+            to="/courses/new"
+          >
+            Crear curso
+          </Link>
+        )}
+      </div>
 
-        <div className="flex flex-col gap-3">
+      {courses.length === 0 ? (
+        <p className="mt-8 rounded-xl bg-verde-medio p-6 text-center text-crema">
+          No hay cursos para mostrar.
+        </p>
+      ) : (
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
           {courses.map((course) => (
-            <div
+            <Link
+              className="rounded-xl border-l-4 border-dorado bg-white p-5 shadow-sm transition hover:shadow-md"
               key={course.id}
-              className="bg-[#2A6B5C] text-[#E8DCC4] rounded-lg px-4 py-3 shadow border-l-4 border-[#C49A45] hover:border-[#E8DCC4] transition"
+              to={`/courses/${course.id}`}
             >
-              {course.name}
-            </div>
+              <p className="text-sm font-semibold text-verde-medio">
+                {course.code}
+              </p>
+              <h2 className="mt-1 text-xl font-bold">{course.name}</h2>
+              <p className="mt-2 text-sm text-verde-oscuro/70">
+                Docente: {course.teacher.name}
+              </p>
+            </Link>
           ))}
         </div>
-      </div>
-    </div>
-  </div>
-)
+      )}
+    </main>
+  )
 }
