@@ -3,7 +3,7 @@ use std::{env, error::Error, io};
 use sqlx::PgPool;
 use tracing::info;
 
-use crate::util::password::hash_password;
+use crate::util::{password::hash_password, validation::normalize_email};
 
 struct BootstrapAdminConfig {
     name: String,
@@ -82,7 +82,7 @@ pub(crate) async fn ensure_super_admin(pool: &PgPool) -> Result<(), Box<dyn Erro
           "#,
     )
     .bind(config.name.trim())
-    .bind(config.email.trim().to_lowercase())
+    .bind(normalize_email(&config.email))
     .bind(password_hash)
     .execute(pool)
     .await?;

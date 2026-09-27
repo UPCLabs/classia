@@ -14,3 +14,7 @@ pub async fn connect(database_url: &str) -> Result<PgPool, Box<dyn Error>> {
 
     Ok(pool)
 }
+
+pub fn is_unique_violation(error: &sqlx::Error) -> bool {
+    matches!(error, sqlx::Error::Database(db_error) if db_error.is_unique_violation())
+}

@@ -156,17 +156,20 @@ impl UserRepository {
         .await
     }
 
-    pub async fn deactivate_user(&self, id_user: Uuid) -> Result<(), sqlx::Error> {
-        let result =
-            sqlx::query("UPDATE users SET status = 'inactive', updated_at = now() WHERE id = $1")
-                .bind(id_user)
-                .execute(&self.pool)
-                .await?;
-
-        if result.rows_affected() == 0 {
-            return Err(sqlx::Error::RowNotFound);
-        }
-        Ok(())
+    pub async fn update_status(&self, id_user: Uuid, status: &str) -> Result<User, sqlx::Error> {
+        query_as::<_, User>(
+            r#"
+        UPDATE users
+        SET status = $1,
+            updated_at = now()
+        WHERE id = $2
+        RETURNING id, name, email, password, role, status, token, created_at, updated_at
+        "#,
+        )
+        .bind(status)
+        .bind(id_user)
+        .fetch_one(&self.pool)
+        .await
     }
 
     pub async fn list_users(

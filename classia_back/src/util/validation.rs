@@ -13,3 +13,7 @@ pub fn validation_message(errors: ValidationErrors) -> String {
         .collect::<Vec<_>>()
         .join(", ")
 }
+
+pub fn normalize_email(email: &str) -> String {
+    email.trim().to_lowercase()
+}

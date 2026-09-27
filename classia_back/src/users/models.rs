@@ -11,6 +11,22 @@ pub enum UserRole {
     Student,
 }
 
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum UserStatus {
+    Active,
+    Inactive,
+}
+
+impl UserStatus {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            UserStatus::Active => "active",
+            UserStatus::Inactive => "inactive",
+        }
+    }
+}
+
 #[derive(Debug, sqlx::FromRow)]
 pub struct User {
     pub id: Uuid,
@@ -19,6 +35,7 @@ pub struct User {
     pub password: String,
     pub role: UserRole,
     pub status: String,
+    #[allow(unused)]
     pub token: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

@@ -33,9 +33,15 @@ impl FromRequestParts<ClassiaState> for AuthenticatedUser {
 
         let claims = state.auth_service.validate_token(token)?;
 
+        let user = state
+            .user_service
+            .find_active_user(claims.sub)
+            .await?
+            .ok_or_else(AppError::invalid_token)?;
+
         Ok(Self {
-            id: claims.sub,
-            role: claims.role,
+            id: user.id,
+            role: user.role,
         })
     }
 }
