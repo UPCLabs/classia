@@ -4,7 +4,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::users::User;
-use crate::users::models::UserRole;
+use crate::users::models::{UserRole, UserStatus};
 use crate::util::deserializers::{deserialize_optional_trimmed, deserialize_trimmed};
 
 #[derive(Debug, Deserialize, Validate)]
@@ -48,13 +48,14 @@ pub struct UpdateUserDto {
         max = 100,
         message = "El nombre debe tener entre 1 y 100 caracteres"
     ))]
-    #[serde(deserialize_with = "deserialize_optional_trimmed")]
+    #[serde(default, deserialize_with = "deserialize_optional_trimmed")]
     pub name: Option<String>,
 
     #[validate(email(message = "Correo inválido"))]
-    #[serde(deserialize_with = "deserialize_optional_trimmed")]
+    #[serde(default, deserialize_with = "deserialize_optional_trimmed")]
     pub email: Option<String>,
 
+    #[serde(default)]
     pub role: Option<UserRole>,
 }
 
@@ -83,9 +84,19 @@ impl From<User> for UserResponseDto {
     }
 }
 
+#[derive(Debug, Serialize)]
+pub struct UserListResponseDto {
+    pub items: Vec<UserResponseDto>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct UserQueryParams {
     pub q: Option<String>,
     pub role: Option<UserRole>,
     pub status: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateUserStatusDto {
+    pub status: UserStatus,
 }

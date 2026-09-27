@@ -6,10 +6,14 @@ use crate::{
         UserRole,
         dto::{ChangePasswordDto, UpdateUserDto, UserCreateDto, UserQueryParams},
         error::UserError,
-        models::User,
+        models::{User, UserStatus},
         repository::UserRepository,
     },
-    util::{password::hash_password, validation::validation_message},
+    util::{
+        database::is_unique_violation,
+        password::hash_password,
+        validation::{normalize_email, validation_message},
+    },
 };
 
 pub struct UserService {
@@ -34,10 +38,20 @@ impl UserService {
         }
     }
 
+    pub async fn find_active_user(&self, id_user: Uuid) -> Result<Option<User>, UserError> {
+        let user = self
+            .user_repository
+            .get_user_by_id(id_user)
+            .await
+            .map_err(UserError::Database)?;
+
+        Ok(user.filter(|user| user.status == "active"))
+    }
+
     pub async fn get_user_by_email(&self, email: &str) -> Result<User, UserError> {
         let consult = self
             .user_repository
-            .get_user_by_email(email)
+            .get_user_by_email(&normalize_email(email))
             .await
             .map_err(UserError::Database)?;
 
@@ -55,15 +69,23 @@ impl UserService {
         body.validate()
             .map_err(|errors| UserError::ValidationError(validation_message(errors)))?;
 
+        if !caller_role.is_admin() {
+            return Err(UserError::Forbidden(
+                "Only administrators can create users".into(),
+            ));
+        }
+
         if !caller_role.can_assign_role(&body.role) {
             return Err(UserError::Forbidden(
                 "Admins cannot create a SuperAdmin".into(),
             ));
         }
 
+        let email = normalize_email(&body.email);
+
         let exists = self
             .user_repository
-            .exists_by_email(&body.email)
+            .exists_by_email(&email)
             .await
             .map_err(UserError::Database)?;
 
@@ -75,9 +97,9 @@ impl UserService {
             .map_err(|error| UserError::InternalError(error.to_string()))?;
 
         self.user_repository
-            .insert_user(&body.name, &body.email, &password_hash, body.role)
+            .insert_user(&body.name, &email, &password_hash, body.role)
             .await
-            .map_err(UserError::Database)
+            .map_err(map_write_error)
     }
 
     pub async fn change_password(
@@ -123,16 +145,20 @@ impl UserService {
             .map_err(UserError::Database)?
             .ok_or(UserError::UserNotFound)?;
 
-        if let Some(new_role) = &body.role {
-            if !caller_role.can_assign_role(new_role) || !caller_role.can_assign_role(&target.role)
-            {
-                return Err(UserError::Forbidden(
-                    "Admins cannot grant or modify the SuperAdmin role".into(),
-                ));
-            }
+        let assigns_forbidden_role = body
+            .role
+            .as_ref()
+            .is_some_and(|new_role| !caller_role.can_assign_role(new_role));
+
+        if !caller_role.can_assign_role(&target.role) || assigns_forbidden_role {
+            return Err(UserError::Forbidden(
+                "Admins cannot grant or modify the SuperAdmin role".into(),
+            ));
         }
 
-        if let Some(email) = &body.email {
+        let email = body.email.as_deref().map(normalize_email);
+
+        if let Some(email) = &email {
             let existing = self
                 .user_repository
                 .get_user_by_email(email)
@@ -145,22 +171,36 @@ impl UserService {
         }
 
         self.user_repository
-            .update_user(id_user, body.name, body.email, body.role)
+            .update_user(id_user, body.name, email, body.role)
             .await
-            .map_err(|error| match error {
-                sqlx::Error::RowNotFound => UserError::UserNotFound,
-                error => UserError::Database(error),
-            })
+            .map_err(map_write_error)
     }
 
-    pub async fn delete_user(&self, id_user: Uuid) -> Result<(), UserError> {
+    pub async fn update_user_status(
+        &self,
+        id_user: Uuid,
+        status: UserStatus,
+        caller_id: Uuid,
+        caller_role: UserRole,
+    ) -> Result<User, UserError> {
+        if id_user == caller_id {
+            return Err(UserError::ValidationError(
+                "No puedes cambiar tu propio estado".into(),
+            ));
+        }
+
+        let target = self.get_user_by_id(id_user).await?;
+
+        if !caller_role.can_assign_role(&target.role) {
+            return Err(UserError::Forbidden(
+                "Admins cannot modify a SuperAdmin".into(),
+            ));
+        }
+
         self.user_repository
-            .deactivate_user(id_user)
+            .update_status(id_user, status.as_str())
             .await
-            .map_err(|error| match error {
-                sqlx::Error::RowNotFound => UserError::UserNotFound,
-                error => UserError::Database(error),
-            })
+            .map_err(map_write_error)
     }
 
     pub async fn list_users(&self, params: UserQueryParams) -> Result<Vec<User>, UserError> {
@@ -183,5 +223,12 @@ impl UserService {
             .await
             .map_err(UserError::Database)
     }
+}
 
+fn map_write_error(error: sqlx::Error) -> UserError {
+    match error {
+        sqlx::Error::RowNotFound => UserError::UserNotFound,
+        error if is_unique_violation(&error) => UserError::EmailAlreadyExists,
+        error => UserError::Database(error),
+    }
 }

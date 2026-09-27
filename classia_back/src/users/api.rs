@@ -1,36 +1,74 @@
 use axum::{
-    Json, Router, extract::{Path, Query, State}, http::StatusCode, routing::{delete, get, patch, post},
+    Json, Router,
+    extract::{Path, Query, State},
+    http::StatusCode,
+    routing::{get, patch, post},
 };
-use serde_json::{Value, json};
 use uuid::Uuid;
 
 use crate::{
-    auth::AuthenticatedUser, error::AppError, state::ClassiaState, users::dto::{ChangePasswordDto, UpdateUserDto, UserCreateDto, UserQueryParams, UserResponseDto},
+    auth::AuthenticatedUser,
+    error::AppError,
+    state::ClassiaState,
+    users::dto::{
+        ChangePasswordDto, UpdateUserDto, UpdateUserStatusDto, UserCreateDto, UserListResponseDto,
+        UserQueryParams, UserResponseDto,
+    },
 };
 
 pub fn route() -> Router<ClassiaState> {
     Router::new()
+        .route("/", get(list_users))
         .route("/create", post(create_user))
         .route("/change-password", patch(change_password))
-        .route("/update/{id}", patch(update_user))
-        .route("/delete/{id}", delete(delete_user))
-        .route("/", get(list_users))
+        .route("/{id}", get(get_user).patch(update_user))
+        .route("/{id}/status", patch(update_user_status))
+}
+
+fn require_admin(user: &AuthenticatedUser) -> Result<(), AppError> {
+    if user.role.is_admin() {
+        Ok(())
+    } else {
+        Err(AppError::forbidden())
+    }
+}
+
+async fn list_users(
+    State(state): State<ClassiaState>,
+    user: AuthenticatedUser,
+    Query(params): Query<UserQueryParams>,
+) -> Result<Json<UserListResponseDto>, AppError> {
+    require_admin(&user)?;
+
+    let users = state.user_service.list_users(params).await?;
+
+    Ok(Json(UserListResponseDto {
+        items: users.into_iter().map(Into::into).collect(),
+    }))
+}
+
+async fn get_user(
+    State(state): State<ClassiaState>,
+    user: AuthenticatedUser,
+    Path(id): Path<Uuid>,
+) -> Result<Json<UserResponseDto>, AppError> {
+    require_admin(&user)?;
+
+    let target = state.user_service.get_user_by_id(id).await?;
+
+    Ok(Json(target.into()))
 }
 
 async fn create_user(
-    State(service): State<ClassiaState>,
+    State(state): State<ClassiaState>,
     user: AuthenticatedUser,
     Json(body): Json<UserCreateDto>,
-) -> Result<Json<Value>, AppError> {
-    if !user.role.is_admin() {
-        return Err(AppError::forbidden());
-    }
+) -> Result<(StatusCode, Json<UserResponseDto>), AppError> {
+    require_admin(&user)?;
 
-    let _ = service.user_service.create_user(body, user.role).await?;
+    let created = state.user_service.create_user(body, user.role).await?;
 
-    Ok(Json(json!({
-        "message": "User created"
-    })))
+    Ok((StatusCode::CREATED, Json(created.into())))
 }
 
 async fn change_password(
@@ -39,6 +77,7 @@ async fn change_password(
     Json(request): Json<ChangePasswordDto>,
 ) -> Result<StatusCode, AppError> {
     state.user_service.change_password(user.id, request).await?;
+
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -47,47 +86,26 @@ async fn update_user(
     user: AuthenticatedUser,
     Path(id): Path<Uuid>,
     Json(body): Json<UpdateUserDto>,
-) -> Result<Json<Value>, AppError> {
-    if !user.role.is_admin() {
-        return Err(AppError::forbidden());
-    }
+) -> Result<Json<UserResponseDto>, AppError> {
+    require_admin(&user)?;
 
-    let _ = state.user_service.update_user(id, body, user.role).await?;
+    let updated = state.user_service.update_user(id, body, user.role).await?;
 
-    Ok(Json(json!({
-        "message": "User updated"
-    })))
+    Ok(Json(updated.into()))
 }
 
-async fn delete_user(
+async fn update_user_status(
     State(state): State<ClassiaState>,
     user: AuthenticatedUser,
     Path(id): Path<Uuid>,
-) -> Result<Json<Value>, AppError> {
-    if !user.role.is_admin() {
-        return Err(AppError::forbidden());
-    }
+    Json(body): Json<UpdateUserStatusDto>,
+) -> Result<Json<UserResponseDto>, AppError> {
+    require_admin(&user)?;
 
-    state.user_service.delete_user(id).await?;
+    let updated = state
+        .user_service
+        .update_user_status(id, body.status, user.id, user.role)
+        .await?;
 
-    Ok(Json(json!({
-        "message": "User deactivated"
-    })))
-}
-
-async fn list_users(
-    State(state): State<ClassiaState>,
-    user: AuthenticatedUser,
-    Query(params): Query<UserQueryParams>, 
-) -> Result<Json<Value>, AppError> {
-    if !user.role.is_admin() {
-        return Err(AppError::forbidden());
-    }
-
-
-    let users = state.user_service.list_users(params).await?;
-
-    let users_dto: Vec<UserResponseDto> = users.into_iter().map(|u| u.into()).collect();
-
-    Ok(Json(json!({ "items": users_dto })))
+    Ok(Json(updated.into()))
 }
