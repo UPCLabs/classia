@@ -11,9 +11,21 @@ mod tests;
 use sqlx::PgPool;
 
 pub(crate) use api::route;
-pub(crate) use service::CourseService;
+pub(crate) use service::{CourseService, EnrollmentService};
 
-pub(crate) fn build_service(pool: PgPool) -> CourseService {
+pub(crate) fn build_service(
+    pool: PgPool,
+    user_service: std::sync::Arc<crate::users::UserService>,
+) -> CourseService {
     let repository = repository::CourseRepository::new(pool);
-    CourseService::new(repository)
+    CourseService::new(repository, user_service)
+}
+
+pub(crate) fn build_enrollment_service(
+    pool: PgPool,
+    user_service: std::sync::Arc<crate::users::UserService>,
+    course_service: std::sync::Arc<CourseService>,
+) -> EnrollmentService {
+    let repository = repository::CourseRepository::new(pool);
+    EnrollmentService::new(repository, user_service, course_service)
 }

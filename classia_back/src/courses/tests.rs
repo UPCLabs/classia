@@ -6,7 +6,7 @@ use validator::Validate;
 use super::{
     dto::{CourseCreateDto, CourseResponseDto},
     error::CourseError,
-    models::Course,
+    models::{Course, CourseStatus},
 };
 use crate::error::AppError;
 
@@ -15,9 +15,8 @@ fn valid_course() -> CourseCreateDto {
         name: "Software Engineering".to_string(),
         code: "IS212".to_string(),
         teacher_id: Uuid::now_v7(),
-        password: "course-password".to_string(),
-        status: "active".to_string(),
-        quantity: 20,
+        status: CourseStatus::Active,
+        capacity: 20,
     }
 }
 
@@ -27,7 +26,7 @@ fn validates_course_fields() {
 
     let mut invalid = valid_course();
     invalid.code = "TOO-LONG".to_string();
-    invalid.quantity = -1;
+    invalid.capacity = 0;
 
     assert!(invalid.validate().is_err());
 }
@@ -40,9 +39,11 @@ fn course_response_copies_persisted_fields() {
         name: "Software Engineering".to_string(),
         code: "IS212".to_string(),
         teacher_id: Uuid::now_v7(),
-        password: "course-password".to_string(),
-        status: "active".to_string(),
-        quantity: 20,
+        teacher_name: "Teacher".to_string(),
+        teacher_email: "teacher@example.com".to_string(),
+        status: CourseStatus::Active,
+        capacity: 20,
+        enrolled_count: 0,
         created_at: now,
         updated_at: now,
     };
@@ -51,7 +52,8 @@ fn course_response_copies_persisted_fields() {
 
     assert_eq!(response.name, "Software Engineering");
     assert_eq!(response.code, "IS212");
-    assert_eq!(response.quantity, 20);
+    assert_eq!(response.capacity, 20);
+    assert_eq!(response.teacher.name, "Teacher");
 }
 
 #[test]

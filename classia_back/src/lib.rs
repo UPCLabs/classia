@@ -30,7 +30,15 @@ pub async fn initialize_database(pool: &PgPool) -> Result<(), Box<dyn Error>> {
 
 pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Error>> {
     let user_service = Arc::new(users::build_service(pool.clone()));
-    let course_service = Arc::new(courses::build_service(pool));
+    let course_service = Arc::new(courses::build_service(
+        pool.clone(),
+        user_service.clone(),
+    ));
+    let enrollment_service = Arc::new(courses::build_enrollment_service(
+        pool,
+        user_service.clone(),
+        course_service.clone(),
+    ));
     let auth_service = Arc::new(
         auth::build_service(
             JwtConfig {
@@ -43,7 +51,12 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
         .map_err(|error| io::Error::other(format!("{error:?}")))?,
     );
 
-    let state = ClassiaState::new(user_service, course_service, auth_service);
+    let state = ClassiaState::new(
+        user_service,
+        course_service,
+        enrollment_service,
+        auth_service,
+    );
 
     Ok(Router::new()
         .route("/api/ping", get(ping))

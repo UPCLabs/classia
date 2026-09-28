@@ -25,8 +25,8 @@ async fn persistence_enforces_unique_user_email_and_course_teacher_fk(pool: PgPo
 
     let invalid_course = sqlx::query(
         r#"
-        INSERT INTO courses (id, name, code, teacher_id, password, status, quantity)
-        VALUES ($1, 'Course', 'ABC123', $2, 'password', 'active', 10)
+        INSERT INTO courses (id, name, code, teacher_id, status, capacity)
+        VALUES ($1, 'Course', 'ABC123', $2, 'active', 10)
         "#,
     )
     .bind(Uuid::now_v7())
