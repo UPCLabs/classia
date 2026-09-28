@@ -1,10 +1,12 @@
+use chrono::{DateTime, Utc};
 use sqlx::{PgPool, query_as};
 use uuid::Uuid;
 
 use crate::courses::{
-    dto::{CourseCreateDto, CourseUpdateDto, EnrollStudentDto},
-    models::{Course, Enrollment},
+    dto::{CourseCreateDto, CourseUpdateDto},
+    models::Course,
 };
+use crate::users::User;
 
 const COURSE_SELECT: &str = r#"
     SELECT
@@ -23,6 +25,15 @@ const COURSE_SELECT: &str = r#"
     JOIN users teacher ON teacher.id = c.teacher_id
     LEFT JOIN course_enrollments enrollment ON enrollment.course_id = c.id
 "#;
+
+const USER_COLUMNS: &str =
+    "u.id, u.name, u.email, u.password, u.role, u.status, u.token, u.created_at, u.updated_at";
+
+pub enum EnrollOutcome {
+    Enrolled(DateTime<Utc>),
+    AlreadyEnrolled,
+    CourseFull,
+}
 
 pub struct CourseRepository {
     pool: PgPool,
@@ -53,9 +64,11 @@ impl CourseRepository {
     pub async fn list_by_student(&self, student_id: Uuid) -> Result<Vec<Course>, sqlx::Error> {
         query_as::<_, Course>(&format!(
             "{COURSE_SELECT}
-             JOIN course_enrollments student_enrollment
-               ON student_enrollment.course_id = c.id
-              AND student_enrollment.student_id = $1
+             WHERE EXISTS (
+                 SELECT 1 FROM course_enrollments student_enrollment
+                 WHERE student_enrollment.course_id = c.id
+                   AND student_enrollment.student_id = $1
+             )
              GROUP BY c.id, teacher.id ORDER BY c.created_at DESC"
         ))
         .bind(student_id)
@@ -72,28 +85,18 @@ impl CourseRepository {
         .await
     }
 
-    pub async fn get_by_code(&self, code: &str) -> Result<Course, sqlx::Error> {
-        query_as::<_, Course>(&format!(
-            "{COURSE_SELECT} WHERE c.code = $1 GROUP BY c.id, teacher.id"
-        ))
-        .bind(code)
-        .fetch_one(&self.pool)
-        .await
-    }
-
     pub async fn create(&self, body: CourseCreateDto) -> Result<Course, sqlx::Error> {
-        let id = Uuid::now_v7();
-        sqlx::query(
-            "INSERT INTO courses (id, name, code, teacher_id, status, capacity)
-             VALUES ($1, $2, $3, $4, $5, $6)",
+        let id = sqlx::query_scalar::<_, Uuid>(
+            "INSERT INTO courses (name, code, teacher_id, status, capacity)
+             VALUES ($1, $2, $3, $4, $5)
+             RETURNING id",
         )
-        .bind(id)
         .bind(body.name)
         .bind(body.code)
         .bind(body.teacher_id)
         .bind(body.status)
         .bind(body.capacity)
-        .execute(&self.pool)
+        .fetch_one(&self.pool)
         .await?;
 
         self.get_by_id(id).await
@@ -126,18 +129,14 @@ impl CourseRepository {
         self.get_by_id(course_id).await
     }
 
-    pub async fn list_enrolled_students(
-        &self,
-        course_id: Uuid,
-    ) -> Result<Vec<Enrollment>, sqlx::Error> {
-        query_as::<_, Enrollment>(
-            "SELECT e.course_id, e.student_id, u.name AS student_name,
-                    u.email AS student_email, e.enrolled_at
+    pub async fn list_enrolled_students(&self, course_id: Uuid) -> Result<Vec<User>, sqlx::Error> {
+        query_as::<_, User>(&format!(
+            "SELECT {USER_COLUMNS}
              FROM course_enrollments e
              JOIN users u ON u.id = e.student_id
              WHERE e.course_id = $1
-             ORDER BY u.name",
-        )
+             ORDER BY u.name"
+        ))
         .bind(course_id)
         .fetch_all(&self.pool)
         .await
@@ -147,9 +146,9 @@ impl CourseRepository {
         &self,
         course_id: Uuid,
         search: Option<&str>,
-    ) -> Result<Vec<(Uuid, String, String)>, sqlx::Error> {
-        query_as::<_, (Uuid, String, String)>(
-            "SELECT u.id, u.name, u.email
+    ) -> Result<Vec<User>, sqlx::Error> {
+        query_as::<_, User>(&format!(
+            "SELECT {USER_COLUMNS}
              FROM users u
              WHERE u.role = 'student'
                AND u.status = 'active'
@@ -158,8 +157,8 @@ impl CourseRepository {
                    SELECT 1 FROM course_enrollments e
                    WHERE e.course_id = $1 AND e.student_id = u.id
                )
-             ORDER BY u.name",
-        )
+             ORDER BY u.name"
+        ))
         .bind(course_id)
         .bind(search)
         .fetch_all(&self.pool)
@@ -169,17 +168,55 @@ impl CourseRepository {
     pub async fn enroll_student(
         &self,
         course_id: Uuid,
-        body: &EnrollStudentDto,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query(
-            "INSERT INTO course_enrollments (course_id, student_id)
-             VALUES ($1, $2)",
+        student_id: Uuid,
+    ) -> Result<EnrollOutcome, sqlx::Error> {
+        let mut transaction = self.pool.begin().await?;
+
+        let capacity =
+            sqlx::query_scalar::<_, i16>("SELECT capacity FROM courses WHERE id = $1 FOR UPDATE")
+                .bind(course_id)
+                .fetch_one(&mut *transaction)
+                .await?;
+
+        let already_enrolled = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(
+                 SELECT 1 FROM course_enrollments
+                 WHERE course_id = $1 AND student_id = $2
+             )",
         )
         .bind(course_id)
-        .bind(body.student_id)
-        .execute(&self.pool)
-        .await
-        .map(|_| ())
+        .bind(student_id)
+        .fetch_one(&mut *transaction)
+        .await?;
+
+        if already_enrolled {
+            return Ok(EnrollOutcome::AlreadyEnrolled);
+        }
+
+        let enrolled = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM course_enrollments WHERE course_id = $1",
+        )
+        .bind(course_id)
+        .fetch_one(&mut *transaction)
+        .await?;
+
+        if enrolled >= i64::from(capacity) {
+            return Ok(EnrollOutcome::CourseFull);
+        }
+
+        let enrolled_at = sqlx::query_scalar::<_, DateTime<Utc>>(
+            "INSERT INTO course_enrollments (course_id, student_id)
+             VALUES ($1, $2)
+             RETURNING enrolled_at",
+        )
+        .bind(course_id)
+        .bind(student_id)
+        .fetch_one(&mut *transaction)
+        .await?;
+
+        transaction.commit().await?;
+
+        Ok(EnrollOutcome::Enrolled(enrolled_at))
     }
 
     pub async fn is_enrolled(

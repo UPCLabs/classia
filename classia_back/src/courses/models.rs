@@ -2,13 +2,14 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::users::User;
+
 #[derive(Debug, Deserialize, Serialize, sqlx::Type, Clone, Copy, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 #[sqlx(type_name = "course_status", rename_all = "lowercase")]
 pub enum CourseStatus {
     Active,
     Inactive,
-    Ended,
 }
 
 #[derive(Debug, sqlx::FromRow)]
@@ -26,11 +27,9 @@ pub struct Course {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, sqlx::FromRow)]
+#[derive(Debug)]
 pub struct Enrollment {
     pub course_id: Uuid,
-    pub student_id: Uuid,
-    pub student_name: String,
-    pub student_email: String,
+    pub student: User,
     pub enrolled_at: DateTime<Utc>,
 }

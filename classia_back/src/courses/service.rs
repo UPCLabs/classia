@@ -7,9 +7,10 @@ use crate::courses::{
     dto::{CourseCreateDto, CourseUpdateDto, EnrollStudentDto},
     error::{CourseError, EnrollmentError},
     models::{Course, CourseStatus, Enrollment},
-    repository::CourseRepository,
+    repository::{CourseRepository, EnrollOutcome},
 };
-use crate::users::{UserError, UserRole, UserService};
+use crate::users::{User, UserError, UserRole, UserService};
+use crate::util::database::is_unique_violation;
 
 pub struct CourseService {
     repository: CourseRepository,
@@ -43,11 +44,7 @@ impl CourseService {
         user_id: Uuid,
         role: &UserRole,
     ) -> Result<Course, CourseError> {
-        let course = self
-            .repository
-            .get_by_id(course_id)
-            .await
-            .map_err(map_course_database_error)?;
+        let course = self.find(course_id).await?;
 
         let allowed = match role {
             UserRole::SuperAdmin | UserRole::Admin => true,
@@ -72,11 +69,15 @@ impl CourseService {
         actor_role: &UserRole,
         mut body: CourseCreateDto,
     ) -> Result<Course, CourseError> {
+        if !can_manage_courses(actor_role) {
+            return Err(CourseError::Forbidden);
+        }
+
         normalize_create(&mut body);
         validate(&body)?;
 
-        if !actor_role.is_admin() {
-            body.teacher_id = actor_id;
+        if !actor_role.is_admin() && body.teacher_id != actor_id {
+            return Err(CourseError::Forbidden);
         }
 
         self.validate_teacher(body.teacher_id).await?;
@@ -91,34 +92,44 @@ impl CourseService {
         course_id: Uuid,
         mut body: CourseUpdateDto,
     ) -> Result<Course, CourseError> {
+        if !can_manage_courses(actor_role) {
+            return Err(CourseError::Forbidden);
+        }
+
         normalize_update(&mut body);
         validate(&body)?;
 
-        let current = self
-            .repository
-            .get_by_id(course_id)
-            .await
-            .map_err(map_course_database_error)?;
+        let current = self.find(course_id).await?;
 
         if !actor_role.is_admin() && current.teacher_id != actor_id {
             return Err(CourseError::Forbidden);
         }
 
-        if body.teacher_id.is_some() && !actor_role.is_admin() {
-            return Err(CourseError::Forbidden);
-        }
-
         if let Some(teacher_id) = body.teacher_id {
+            if !actor_role.is_admin() && teacher_id != current.teacher_id {
+                return Err(CourseError::Forbidden);
+            }
             self.validate_teacher(teacher_id).await?;
         }
 
-        if let Some(capacity) = body.capacity {
-            if i64::from(capacity) < current.enrolled_count {
-                return Err(CourseError::CapacityBelowEnrollment);
-            }
+        if body
+            .capacity
+            .is_some_and(|capacity| i64::from(capacity) < current.enrolled_count)
+        {
+            return Err(CourseError::CapacityBelowEnrollment);
         }
 
-        self.repository.update(course_id, body).await.map_err(map_write_error)
+        self.repository
+            .update(course_id, body)
+            .await
+            .map_err(map_write_error)
+    }
+
+    async fn find(&self, course_id: Uuid) -> Result<Course, CourseError> {
+        self.repository
+            .get_by_id(course_id)
+            .await
+            .map_err(map_course_database_error)
     }
 
     async fn validate_teacher(&self, teacher_id: Uuid) -> Result<(), CourseError> {
@@ -127,7 +138,6 @@ impl CourseService {
             .get_user_by_id(teacher_id)
             .await
             .map_err(|error| match error {
-                UserError::UserNotFound => CourseError::TeacherNotFound,
                 UserError::Database(error) => CourseError::Database(error),
                 _ => CourseError::TeacherNotFound,
             })?;
@@ -164,10 +174,19 @@ impl EnrollmentService {
 
     pub async fn list_students(
         &self,
-        teacher_id: Uuid,
+        actor_id: Uuid,
+        actor_role: &UserRole,
         course_id: Uuid,
-    ) -> Result<Vec<Enrollment>, EnrollmentError> {
-        self.ensure_owner(teacher_id, course_id).await?;
+    ) -> Result<Vec<User>, EnrollmentError> {
+        if !actor_role.is_admin() && *actor_role != UserRole::Teacher {
+            return Err(EnrollmentError::Forbidden);
+        }
+
+        self.course_service
+            .get_for_user(course_id, actor_id, actor_role)
+            .await
+            .map_err(map_course_access_error)?;
+
         self.repository
             .list_enrolled_students(course_id)
             .await
@@ -176,24 +195,32 @@ impl EnrollmentService {
 
     pub async fn list_available_students(
         &self,
-        teacher_id: Uuid,
+        actor_id: Uuid,
+        actor_role: &UserRole,
         course_id: Uuid,
         search: Option<&str>,
-    ) -> Result<Vec<(Uuid, String, String)>, EnrollmentError> {
-        self.ensure_owner(teacher_id, course_id).await?;
+    ) -> Result<Vec<User>, EnrollmentError> {
+        self.ensure_responsible_teacher(actor_id, actor_role, course_id)
+            .await?;
+
+        let search = search.map(str::trim).filter(|search| !search.is_empty());
+
         self.repository
             .list_available_students(course_id, search)
             .await
             .map_err(EnrollmentError::Database)
     }
 
-    pub async fn register_student(
+    pub async fn enroll_student(
         &self,
-        teacher_id: Uuid,
+        actor_id: Uuid,
+        actor_role: &UserRole,
         course_id: Uuid,
         body: EnrollStudentDto,
-    ) -> Result<(), EnrollmentError> {
-        let course = self.ensure_owner(teacher_id, course_id).await?;
+    ) -> Result<Enrollment, EnrollmentError> {
+        let course = self
+            .ensure_responsible_teacher(actor_id, actor_role, course_id)
+            .await?;
 
         if course.status != CourseStatus::Active {
             return Err(EnrollmentError::CourseNotActive);
@@ -204,31 +231,20 @@ impl EnrollmentService {
             .get_user_by_id(body.student_id)
             .await
             .map_err(|error| match error {
-                UserError::UserNotFound => EnrollmentError::StudentNotFound,
                 UserError::Database(error) => EnrollmentError::Database(error),
                 _ => EnrollmentError::StudentNotFound,
             })?;
 
         if student.role != UserRole::Student {
-            return Err(EnrollmentError::StudentMustHaveStudentRole);
+            return Err(EnrollmentError::InvalidStudentRole);
         }
         if student.status != "active" {
             return Err(EnrollmentError::StudentInactive);
         }
-        if self
-            .repository
-            .is_enrolled(course_id, body.student_id)
-            .await
-            .map_err(EnrollmentError::Database)?
-        {
-            return Err(EnrollmentError::AlreadyEnrolled);
-        }
-        if course.enrolled_count >= i64::from(course.capacity) {
-            return Err(EnrollmentError::CourseFull);
-        }
 
-        self.repository
-            .enroll_student(course_id, &body)
+        let enrolled_at = match self
+            .repository
+            .enroll_student(course_id, student.id)
             .await
             .map_err(|error| {
                 if is_unique_violation(&error) {
@@ -236,26 +252,45 @@ impl EnrollmentService {
                 } else {
                     EnrollmentError::Database(error)
                 }
-            })
+            })? {
+            EnrollOutcome::Enrolled(enrolled_at) => enrolled_at,
+            EnrollOutcome::CourseFull => return Err(EnrollmentError::CourseFull),
+            EnrollOutcome::AlreadyEnrolled => return Err(EnrollmentError::AlreadyEnrolled),
+        };
+
+        Ok(Enrollment {
+            course_id,
+            student,
+            enrolled_at,
+        })
     }
 
-    async fn ensure_owner(
+    async fn ensure_responsible_teacher(
         &self,
-        teacher_id: Uuid,
+        actor_id: Uuid,
+        actor_role: &UserRole,
         course_id: Uuid,
     ) -> Result<Course, EnrollmentError> {
-        let course = self
-            .course_service
-            .get_for_user(course_id, teacher_id, &UserRole::Teacher)
-            .await
-            .map_err(|error| match error {
-                CourseError::CourseNotFound => EnrollmentError::CourseNotFound,
-                CourseError::Forbidden => EnrollmentError::TeacherDoesNotOwnCourse,
-                CourseError::Database(error) => EnrollmentError::Database(error),
-                _ => EnrollmentError::CourseNotFound,
-            })?;
+        if *actor_role != UserRole::Teacher {
+            return Err(EnrollmentError::Forbidden);
+        }
 
-        Ok(course)
+        self.course_service
+            .get_for_user(course_id, actor_id, actor_role)
+            .await
+            .map_err(map_course_access_error)
+    }
+}
+
+fn can_manage_courses(role: &UserRole) -> bool {
+    role.is_admin() || *role == UserRole::Teacher
+}
+
+fn map_course_access_error(error: CourseError) -> EnrollmentError {
+    match error {
+        CourseError::Forbidden => EnrollmentError::Forbidden,
+        CourseError::Database(error) => EnrollmentError::Database(error),
+        _ => EnrollmentError::CourseNotFound,
     }
 }
 
@@ -296,12 +331,4 @@ fn map_write_error(error: sqlx::Error) -> CourseError {
     } else {
         map_course_database_error(error)
     }
-}
-
-fn is_unique_violation(error: &sqlx::Error) -> bool {
-    matches!(
-        error,
-        sqlx::Error::Database(database_error)
-            if database_error.code().as_deref() == Some("23505")
-    )
 }

@@ -7,8 +7,7 @@ CREATE TYPE user_role AS ENUM (
 
 CREATE TYPE course_status AS ENUM (
     'active',
-    'inactive',
-    'ended'
+    'inactive'
 );
 
 CREATE TABLE users (

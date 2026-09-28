@@ -575,12 +575,56 @@ async fn password_change_replaces_the_login_credential(pool: PgPool) {
     assert_eq!(new_login.status(), StatusCode::NO_CONTENT);
 }
 
+async fn create_course(
+    app: &Router,
+    cookie: &str,
+    code: &str,
+    teacher_id: Uuid,
+    capacity: i16,
+) -> Value {
+    let response = request(
+        app,
+        Method::POST,
+        "/api/courses",
+        Some(json!({
+            "name": "Software Engineering",
+            "code": code,
+            "teacher_id": teacher_id,
+            "status": "active",
+            "capacity": capacity
+        })),
+        Some(cookie),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::CREATED);
+    response_json(response).await
+}
+
+async fn enroll(app: &Router, cookie: &str, course_id: &str, student_id: Uuid) -> Response<Body> {
+    request(
+        app,
+        Method::POST,
+        &format!("/api/courses/{course_id}/students"),
+        Some(json!({ "student_id": student_id })),
+        Some(cookie),
+    )
+    .await
+}
+
 #[sqlx::test(migrations = "./migrations")]
-async fn courses_can_be_created_and_queried_through_existing_routes(pool: PgPool) {
+async fn courses_are_created_listed_and_read_by_role(pool: PgPool) {
     let teacher_id = insert_user(
         &pool,
         "teacher@example.com",
         "teacher-password",
+        "teacher",
+        "active",
+    )
+    .await;
+    let other_teacher_id = insert_user(
+        &pool,
+        "other@example.com",
+        "other-password",
         "teacher",
         "active",
     )
@@ -593,100 +637,564 @@ async fn courses_can_be_created_and_queried_through_existing_routes(pool: PgPool
         "active",
     )
     .await;
-    let app = app(pool.clone());
-    let teacher_cookie = login_cookie(&app, "teacher@example.com", "teacher-password").await;
-    let student_cookie = login_cookie(&app, "student@example.com", "student-password").await;
-
-    let unauthenticated = request(
-        &app,
-        Method::GET,
-        &format!("/api/courses/{}", Uuid::now_v7()),
-        None,
-        None,
+    insert_user(
+        &pool,
+        "admin@example.com",
+        "admin-password",
+        "admin",
+        "active",
     )
     .await;
+    let app = app(pool.clone());
+    let teacher_cookie = login_cookie(&app, "teacher@example.com", "teacher-password").await;
+    let other_cookie = login_cookie(&app, "other@example.com", "other-password").await;
+    let student_cookie = login_cookie(&app, "student@example.com", "student-password").await;
+    let admin_cookie = login_cookie(&app, "admin@example.com", "admin-password").await;
+
+    let unauthenticated = request(&app, Method::GET, "/api/courses", None, None).await;
     assert_eq!(unauthenticated.status(), StatusCode::UNAUTHORIZED);
 
-    let student_forbidden = request(
+    let student_create = request(
         &app,
-        Method::GET,
-        &format!("/api/courses/{}", Uuid::now_v7()),
-        None,
+        Method::POST,
+        "/api/courses",
+        Some(json!({
+            "name": "Course",
+            "code": "ST1",
+            "teacher_id": teacher_id,
+            "status": "active",
+            "capacity": 5
+        })),
         Some(&student_cookie),
     )
     .await;
-    assert_eq!(student_forbidden.status(), StatusCode::FORBIDDEN);
+    assert_eq!(student_create.status(), StatusCode::FORBIDDEN);
 
-    let created = request(
+    let teacher_for_other = request(
         &app,
         Method::POST,
-        "/api/courses/create",
+        "/api/courses",
         Some(json!({
-            "name": "Software Engineering",
-            "code": "IS212",
-            "teacher_id": teacher_id,
+            "name": "Course",
+            "code": "OT1",
+            "teacher_id": other_teacher_id,
             "status": "active",
-            "capacity": 25
+            "capacity": 5
         })),
         Some(&teacher_cookie),
     )
     .await;
-    assert_eq!(created.status(), StatusCode::OK);
-    let created = response_json(created).await;
-    let course_id = created["id"].as_str().expect("course id is present");
+    assert_eq!(teacher_for_other.status(), StatusCode::FORBIDDEN);
 
-    let enrollment_payload = json!({ "student_id": student_id });
-    let enrolled = request(
-        &app,
-        Method::POST,
-        &format!("/api/courses/{course_id}/students"),
-        Some(enrollment_payload.clone()),
-        Some(&teacher_cookie),
-    )
-    .await;
-    assert_eq!(enrolled.status(), StatusCode::CREATED);
-
-    let student_cannot_enroll = request(
-        &app,
-        Method::POST,
-        &format!("/api/courses/{course_id}/students"),
-        Some(enrollment_payload.clone()),
-        Some(&student_cookie),
-    )
-    .await;
-    assert_eq!(student_cannot_enroll.status(), StatusCode::FORBIDDEN);
+    let created = create_course(&app, &teacher_cookie, " is212 ", teacher_id, 25).await;
+    let course_id = created["id"]
+        .as_str()
+        .expect("course id is present")
+        .to_string();
+    assert_eq!(created["code"], "IS212");
+    assert_eq!(created["teacher"]["id"], teacher_id.to_string());
+    assert_eq!(created["enrolled_count"], 0);
+    assert!(created.get("password").is_none());
 
     let duplicate = request(
         &app,
         Method::POST,
-        &format!("/api/courses/{course_id}/students"),
-        Some(enrollment_payload.clone()),
-        Some(&teacher_cookie),
+        "/api/courses",
+        Some(json!({
+            "name": "Copy",
+            "code": "IS212",
+            "teacher_id": teacher_id,
+            "status": "active",
+            "capacity": 5
+        })),
+        Some(&admin_cookie),
     )
     .await;
     assert_eq!(duplicate.status(), StatusCode::CONFLICT);
+    assert_eq!(response_json(duplicate).await["code"], "COURSE_CODE_EXISTS");
 
-    for uri in [
-        format!("/api/courses/{course_id}"),
-        "/api/courses".to_string(),
+    let student_as_teacher = request(
+        &app,
+        Method::POST,
+        "/api/courses",
+        Some(json!({
+            "name": "Course",
+            "code": "BAD1",
+            "teacher_id": student_id,
+            "status": "active",
+            "capacity": 5
+        })),
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(student_as_teacher.status(), StatusCode::BAD_REQUEST);
+
+    let zero_capacity = request(
+        &app,
+        Method::POST,
+        "/api/courses",
+        Some(json!({
+            "name": "Course",
+            "code": "ZERO",
+            "teacher_id": teacher_id,
+            "status": "active",
+            "capacity": 0
+        })),
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(zero_capacity.status(), StatusCode::BAD_REQUEST);
+
+    for (cookie, expected) in [
+        (&admin_cookie, 1),
+        (&teacher_cookie, 1),
+        (&other_cookie, 0),
+        (&student_cookie, 0),
     ] {
-        let response = request(&app, Method::GET, &uri, None, Some(&teacher_cookie)).await;
+        let response = request(&app, Method::GET, "/api/courses", None, Some(cookie)).await;
         assert_eq!(response.status(), StatusCode::OK);
         let body = response_json(response).await;
-        if uri.ends_with(course_id) {
-            assert_eq!(body["code"], "IS212");
-        } else {
-            assert_eq!(body["items"][0]["code"], "IS212");
-        }
+        assert_eq!(
+            body["items"].as_array().expect("items is a list").len(),
+            expected
+        );
     }
+
+    let course_uri = format!("/api/courses/{course_id}");
+    let before_enrollment =
+        request(&app, Method::GET, &course_uri, None, Some(&student_cookie)).await;
+    assert_eq!(before_enrollment.status(), StatusCode::FORBIDDEN);
+    let other_teacher = request(&app, Method::GET, &course_uri, None, Some(&other_cookie)).await;
+    assert_eq!(other_teacher.status(), StatusCode::FORBIDDEN);
+
+    assert_eq!(
+        enroll(&app, &teacher_cookie, &course_id, student_id)
+            .await
+            .status(),
+        StatusCode::CREATED
+    );
+
+    let enrolled_view = request(&app, Method::GET, &course_uri, None, Some(&student_cookie)).await;
+    assert_eq!(enrolled_view.status(), StatusCode::OK);
+    assert_eq!(response_json(enrolled_view).await["enrolled_count"], 1);
+
+    let student_courses = request(
+        &app,
+        Method::GET,
+        "/api/courses",
+        None,
+        Some(&student_cookie),
+    )
+    .await;
+    let student_courses = response_json(student_courses).await;
+    assert_eq!(student_courses["items"][0]["code"], "IS212");
+    assert_eq!(student_courses["items"][0]["enrolled_count"], 1);
 
     let missing = request(
         &app,
         Method::GET,
         &format!("/api/courses/{}", Uuid::now_v7()),
         None,
-        Some(&teacher_cookie),
+        Some(&admin_cookie),
     )
     .await;
     assert_eq!(missing.status(), StatusCode::NOT_FOUND);
+    assert_eq!(response_json(missing).await["code"], "COURSE_NOT_FOUND");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn course_updates_enforce_ownership_teacher_changes_and_capacity(pool: PgPool) {
+    let teacher_id = insert_user(
+        &pool,
+        "teacher@example.com",
+        "teacher-password",
+        "teacher",
+        "active",
+    )
+    .await;
+    let new_teacher_id = insert_user(
+        &pool,
+        "new@example.com",
+        "new-password",
+        "teacher",
+        "active",
+    )
+    .await;
+    insert_user(
+        &pool,
+        "other@example.com",
+        "other-password",
+        "teacher",
+        "active",
+    )
+    .await;
+    let first_student = insert_user(
+        &pool,
+        "s1@example.com",
+        "student-password",
+        "student",
+        "active",
+    )
+    .await;
+    let second_student = insert_user(
+        &pool,
+        "s2@example.com",
+        "student-password",
+        "student",
+        "active",
+    )
+    .await;
+    insert_user(
+        &pool,
+        "admin@example.com",
+        "admin-password",
+        "admin",
+        "active",
+    )
+    .await;
+    let app = app(pool.clone());
+    let teacher_cookie = login_cookie(&app, "teacher@example.com", "teacher-password").await;
+    let other_cookie = login_cookie(&app, "other@example.com", "other-password").await;
+    let admin_cookie = login_cookie(&app, "admin@example.com", "admin-password").await;
+
+    let course = create_course(&app, &admin_cookie, "UPD1", teacher_id, 5).await;
+    let course_id = course["id"]
+        .as_str()
+        .expect("course id is present")
+        .to_string();
+    let course_uri = format!("/api/courses/{course_id}");
+    create_course(&app, &admin_cookie, "UPD2", teacher_id, 5).await;
+
+    let renamed = request(
+        &app,
+        Method::PATCH,
+        &course_uri,
+        Some(json!({ "name": "Renamed", "status": "inactive" })),
+        Some(&teacher_cookie),
+    )
+    .await;
+    assert_eq!(renamed.status(), StatusCode::OK);
+    let renamed = response_json(renamed).await;
+    assert_eq!(renamed["name"], "Renamed");
+    assert_eq!(renamed["status"], "inactive");
+    assert_eq!(renamed["code"], "UPD1");
+
+    let not_owner = request(
+        &app,
+        Method::PATCH,
+        &course_uri,
+        Some(json!({ "name": "Stolen" })),
+        Some(&other_cookie),
+    )
+    .await;
+    assert_eq!(not_owner.status(), StatusCode::FORBIDDEN);
+
+    let teacher_reassigns = request(
+        &app,
+        Method::PATCH,
+        &course_uri,
+        Some(json!({ "teacher_id": new_teacher_id })),
+        Some(&teacher_cookie),
+    )
+    .await;
+    assert_eq!(teacher_reassigns.status(), StatusCode::FORBIDDEN);
+
+    let duplicate_code = request(
+        &app,
+        Method::PATCH,
+        &course_uri,
+        Some(json!({ "code": "UPD2" })),
+        Some(&teacher_cookie),
+    )
+    .await;
+    assert_eq!(duplicate_code.status(), StatusCode::CONFLICT);
+
+    request(
+        &app,
+        Method::PATCH,
+        &course_uri,
+        Some(json!({ "status": "active" })),
+        Some(&teacher_cookie),
+    )
+    .await;
+    for student in [first_student, second_student] {
+        assert_eq!(
+            enroll(&app, &teacher_cookie, &course_id, student)
+                .await
+                .status(),
+            StatusCode::CREATED
+        );
+    }
+
+    let below_enrollment = request(
+        &app,
+        Method::PATCH,
+        &course_uri,
+        Some(json!({ "capacity": 1 })),
+        Some(&teacher_cookie),
+    )
+    .await;
+    assert_eq!(below_enrollment.status(), StatusCode::CONFLICT);
+    assert_eq!(
+        response_json(below_enrollment).await["code"],
+        "CAPACITY_BELOW_ENROLLMENT"
+    );
+
+    let reassigned = request(
+        &app,
+        Method::PATCH,
+        &course_uri,
+        Some(json!({ "teacher_id": new_teacher_id, "capacity": 2 })),
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(reassigned.status(), StatusCode::OK);
+    let reassigned = response_json(reassigned).await;
+    assert_eq!(reassigned["teacher"]["id"], new_teacher_id.to_string());
+    assert_eq!(reassigned["capacity"], 2);
+
+    let former_owner = request(&app, Method::GET, &course_uri, None, Some(&teacher_cookie)).await;
+    assert_eq!(former_owner.status(), StatusCode::FORBIDDEN);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn teachers_enroll_students_within_the_contract_rules(pool: PgPool) {
+    let teacher_id = insert_user(
+        &pool,
+        "teacher@example.com",
+        "teacher-password",
+        "teacher",
+        "active",
+    )
+    .await;
+    insert_user(
+        &pool,
+        "other@example.com",
+        "other-password",
+        "teacher",
+        "active",
+    )
+    .await;
+    let first_student = insert_user(
+        &pool,
+        "ana@example.com",
+        "student-password",
+        "student",
+        "active",
+    )
+    .await;
+    let second_student = insert_user(
+        &pool,
+        "bruno@example.com",
+        "student-password",
+        "student",
+        "active",
+    )
+    .await;
+    let inactive_student = insert_user(
+        &pool,
+        "inactive@example.com",
+        "student-password",
+        "student",
+        "inactive",
+    )
+    .await;
+    let admin_id = insert_user(
+        &pool,
+        "admin@example.com",
+        "admin-password",
+        "admin",
+        "active",
+    )
+    .await;
+    let app = app(pool.clone());
+    let teacher_cookie = login_cookie(&app, "teacher@example.com", "teacher-password").await;
+    let other_cookie = login_cookie(&app, "other@example.com", "other-password").await;
+    let student_cookie = login_cookie(&app, "ana@example.com", "student-password").await;
+    let admin_cookie = login_cookie(&app, "admin@example.com", "admin-password").await;
+
+    let course = create_course(&app, &teacher_cookie, "ENR1", teacher_id, 1).await;
+    let course_id = course["id"]
+        .as_str()
+        .expect("course id is present")
+        .to_string();
+    let students_uri = format!("/api/courses/{course_id}/students");
+    let available_uri = format!("/api/courses/{course_id}/available-students");
+
+    let available = request(
+        &app,
+        Method::GET,
+        &available_uri,
+        None,
+        Some(&teacher_cookie),
+    )
+    .await;
+    assert_eq!(available.status(), StatusCode::OK);
+    let available = response_json(available).await;
+    let emails: Vec<&str> = available["items"]
+        .as_array()
+        .expect("items is a list")
+        .iter()
+        .map(|user| user["email"].as_str().expect("email is present"))
+        .collect();
+    assert_eq!(emails, ["ana@example.com", "bruno@example.com"]);
+    assert!(available["items"][0].get("password").is_none());
+
+    let searched = request(
+        &app,
+        Method::GET,
+        &format!("{available_uri}?q=BRUNO"),
+        None,
+        Some(&teacher_cookie),
+    )
+    .await;
+    let searched = response_json(searched).await;
+    assert_eq!(
+        searched["items"].as_array().expect("items is a list").len(),
+        1
+    );
+    assert_eq!(searched["items"][0]["email"], "bruno@example.com");
+
+    for (cookie, uri) in [
+        (&admin_cookie, &available_uri),
+        (&other_cookie, &available_uri),
+        (&student_cookie, &available_uri),
+    ] {
+        let response = request(&app, Method::GET, uri, None, Some(cookie)).await;
+        assert_eq!(response.status(), StatusCode::FORBIDDEN, "{uri}");
+    }
+
+    for (cookie, student) in [
+        (&admin_cookie, first_student),
+        (&other_cookie, first_student),
+        (&student_cookie, first_student),
+    ] {
+        assert_eq!(
+            enroll(&app, cookie, &course_id, student).await.status(),
+            StatusCode::FORBIDDEN
+        );
+    }
+
+    for (student, status, code) in [
+        (Uuid::now_v7(), StatusCode::NOT_FOUND, "STUDENT_NOT_FOUND"),
+        (admin_id, StatusCode::BAD_REQUEST, "INVALID_STUDENT_ROLE"),
+        (inactive_student, StatusCode::CONFLICT, "STUDENT_INACTIVE"),
+    ] {
+        let response = enroll(&app, &teacher_cookie, &course_id, student).await;
+        assert_eq!(response.status(), status, "{code}");
+        assert_eq!(response_json(response).await["code"], code);
+    }
+
+    let enrolled = enroll(&app, &teacher_cookie, &course_id, first_student).await;
+    assert_eq!(enrolled.status(), StatusCode::CREATED);
+    let enrolled = response_json(enrolled).await;
+    assert_eq!(enrolled["course_id"], course_id);
+    assert_eq!(enrolled["student"]["id"], first_student.to_string());
+    assert_eq!(enrolled["student"]["role"], "Student");
+    assert_eq!(enrolled["student"]["status"], "active");
+    assert!(enrolled["enrolled_at"].is_string());
+
+    let duplicate = enroll(&app, &teacher_cookie, &course_id, first_student).await;
+    assert_eq!(duplicate.status(), StatusCode::CONFLICT);
+    assert_eq!(
+        response_json(duplicate).await["code"],
+        "STUDENT_ALREADY_ENROLLED"
+    );
+
+    let full = enroll(&app, &teacher_cookie, &course_id, second_student).await;
+    assert_eq!(full.status(), StatusCode::CONFLICT);
+    assert_eq!(response_json(full).await["code"], "COURSE_CAPACITY_REACHED");
+
+    for cookie in [&teacher_cookie, &admin_cookie] {
+        let response = request(&app, Method::GET, &students_uri, None, Some(cookie)).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response_json(response).await;
+        assert_eq!(body["items"].as_array().expect("items is a list").len(), 1);
+        assert_eq!(body["items"][0]["email"], "ana@example.com");
+        assert_eq!(body["items"][0]["role"], "Student");
+        assert!(body["items"][0].get("password").is_none());
+    }
+    for cookie in [&other_cookie, &student_cookie] {
+        let response = request(&app, Method::GET, &students_uri, None, Some(cookie)).await;
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
+
+    request(
+        &app,
+        Method::PATCH,
+        &format!("/api/courses/{course_id}"),
+        Some(json!({ "status": "inactive", "capacity": 5 })),
+        Some(&teacher_cookie),
+    )
+    .await;
+    let inactive_course = enroll(&app, &teacher_cookie, &course_id, second_student).await;
+    assert_eq!(inactive_course.status(), StatusCode::CONFLICT);
+    assert_eq!(
+        response_json(inactive_course).await["code"],
+        "COURSE_NOT_ACTIVE"
+    );
+
+    let missing = enroll(
+        &app,
+        &teacher_cookie,
+        &Uuid::now_v7().to_string(),
+        second_student,
+    )
+    .await;
+    assert_eq!(missing.status(), StatusCode::NOT_FOUND);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn concurrent_enrollments_never_exceed_capacity(pool: PgPool) {
+    let teacher_id = insert_user(
+        &pool,
+        "teacher@example.com",
+        "teacher-password",
+        "teacher",
+        "active",
+    )
+    .await;
+    let mut students = Vec::new();
+    for index in 0..5 {
+        students.push(
+            insert_user(
+                &pool,
+                &format!("student{index}@example.com"),
+                "student-password",
+                "student",
+                "active",
+            )
+            .await,
+        );
+    }
+    let app = app(pool.clone());
+    let teacher_cookie = login_cookie(&app, "teacher@example.com", "teacher-password").await;
+    let course = create_course(&app, &teacher_cookie, "RACE", teacher_id, 2).await;
+    let course_id = course["id"]
+        .as_str()
+        .expect("course id is present")
+        .to_string();
+
+    let attempts = students.into_iter().map(|student| {
+        let app = app.clone();
+        let cookie = teacher_cookie.clone();
+        let course_id = course_id.clone();
+        tokio::spawn(async move { enroll(&app, &cookie, &course_id, student).await.status() })
+    });
+    let mut created = 0;
+    for attempt in attempts.collect::<Vec<_>>() {
+        let status = attempt.await.expect("enrollment task completes");
+        if status == StatusCode::CREATED {
+            created += 1;
+        } else {
+            assert_eq!(status, StatusCode::CONFLICT);
+        }
+    }
+    assert_eq!(created, 2);
+
+    let enrolled: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM course_enrollments")
+        .fetch_one(&pool)
+        .await
+        .expect("enrollments are counted");
+    assert_eq!(enrolled, 2);
 }

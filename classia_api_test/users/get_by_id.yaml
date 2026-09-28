@@ -1,3 +1,3 @@
 name: Obtener Usuario
 method: GET
-url: '{{BASE_URL}}/api/users/01a0d531-50ca-7486-a9b7-d844d221ab57'
+url: '{{BASE_URL}}/api/users/01a0e906-a812-76f7-be6d-a2222ab27858'

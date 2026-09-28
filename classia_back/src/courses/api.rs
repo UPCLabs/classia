@@ -2,18 +2,20 @@ use axum::{
     Json, Router,
     extract::{Path, Query, State},
     http::StatusCode,
-    routing::{get, post},
+    routing::get,
 };
 use serde::Deserialize;
-use serde_json::{Value, json};
 use uuid::Uuid;
 
 use crate::{
     auth::AuthenticatedUser,
-    courses::dto::{CourseCreateDto, CourseResponseDto, CourseUpdateDto, EnrollStudentDto, StudentResponseDto},
+    courses::dto::{
+        CourseCreateDto, CourseResponseDto, CourseUpdateDto, EnrollStudentDto,
+        EnrollmentResponseDto,
+    },
     error::AppError,
     state::ClassiaState,
-    users::UserRole,
+    users::{UserListResponseDto, UserResponseDto},
 };
 
 #[derive(Debug, Deserialize)]
@@ -21,26 +23,37 @@ struct StudentSearchQuery {
     q: Option<String>,
 }
 
+#[derive(Debug, serde::Serialize)]
+struct CourseListResponseDto {
+    items: Vec<CourseResponseDto>,
+}
+
 pub fn route() -> Router<ClassiaState> {
     Router::new()
-        .route("/", get(list_courses))
+        .route("/", get(list_courses).post(create_course))
         .route("/{course_id}", get(get_course).patch(update_course))
-        .route("/create", post(create_course))
-        .route("/{course_id}/students", get(list_students).post(enroll_student))
-        .route("/{course_id}/available-students", get(list_available_students))
+        .route(
+            "/{course_id}/students",
+            get(list_students).post(enroll_student),
+        )
+        .route(
+            "/{course_id}/available-students",
+            get(list_available_students),
+        )
 }
 
 async fn list_courses(
     user: AuthenticatedUser,
     State(state): State<ClassiaState>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<CourseListResponseDto>, AppError> {
     let courses = state
         .course_service
         .list_for_user(user.id, &user.role)
         .await?;
-    let items: Vec<CourseResponseDto> = courses.into_iter().map(Into::into).collect();
 
-    Ok(Json(json!({ "items": items })))
+    Ok(Json(CourseListResponseDto {
+        items: courses.into_iter().map(Into::into).collect(),
+    }))
 }
 
 async fn get_course(
@@ -60,17 +73,13 @@ async fn create_course(
     user: AuthenticatedUser,
     State(state): State<ClassiaState>,
     Json(body): Json<CourseCreateDto>,
-) -> Result<Json<CourseResponseDto>, AppError> {
-    if !user.role.is_admin() && !matches!(user.role, UserRole::Teacher) {
-        return Err(AppError::forbidden());
-    }
-
+) -> Result<(StatusCode, Json<CourseResponseDto>), AppError> {
     let course = state
         .course_service
         .create_course(user.id, &user.role, body)
         .await?;
 
-    Ok(Json(course.into()))
+    Ok((StatusCode::CREATED, Json(course.into())))
 }
 
 async fn update_course(
@@ -79,10 +88,6 @@ async fn update_course(
     Path(course_id): Path<Uuid>,
     Json(body): Json<CourseUpdateDto>,
 ) -> Result<Json<CourseResponseDto>, AppError> {
-    if !user.role.is_admin() && !matches!(user.role, UserRole::Teacher) {
-        return Err(AppError::forbidden());
-    }
-
     let course = state
         .course_service
         .update_course(user.id, &user.role, course_id, body)
@@ -95,15 +100,13 @@ async fn list_students(
     user: AuthenticatedUser,
     State(state): State<ClassiaState>,
     Path(course_id): Path<Uuid>,
-) -> Result<Json<Value>, AppError> {
-    require_teacher(&user)?;
+) -> Result<Json<UserListResponseDto>, AppError> {
     let students = state
         .enrollment_service
-        .list_students(user.id, course_id)
+        .list_students(user.id, &user.role, course_id)
         .await?;
-    let items: Vec<StudentResponseDto> = students.into_iter().map(Into::into).collect();
 
-    Ok(Json(json!({ "items": items })))
+    Ok(Json(user_list(students)))
 }
 
 async fn list_available_students(
@@ -111,18 +114,13 @@ async fn list_available_students(
     State(state): State<ClassiaState>,
     Path(course_id): Path<Uuid>,
     Query(query): Query<StudentSearchQuery>,
-) -> Result<Json<Value>, AppError> {
-    require_teacher(&user)?;
+) -> Result<Json<UserListResponseDto>, AppError> {
     let students = state
         .enrollment_service
-        .list_available_students(user.id, course_id, query.q.as_deref())
+        .list_available_students(user.id, &user.role, course_id, query.q.as_deref())
         .await?;
-    let items: Vec<StudentResponseDto> = students
-        .into_iter()
-        .map(|(id, name, email)| StudentResponseDto { id, name, email })
-        .collect();
 
-    Ok(Json(json!({ "items": items })))
+    Ok(Json(user_list(students)))
 }
 
 async fn enroll_student(
@@ -130,20 +128,17 @@ async fn enroll_student(
     State(state): State<ClassiaState>,
     Path(course_id): Path<Uuid>,
     Json(body): Json<EnrollStudentDto>,
-) -> Result<StatusCode, AppError> {
-    require_teacher(&user)?;
-    state
+) -> Result<(StatusCode, Json<EnrollmentResponseDto>), AppError> {
+    let enrollment = state
         .enrollment_service
-        .register_student(user.id, course_id, body)
+        .enroll_student(user.id, &user.role, course_id, body)
         .await?;
 
-    Ok(StatusCode::CREATED)
+    Ok((StatusCode::CREATED, Json(enrollment.into())))
 }
 
-fn require_teacher(user: &AuthenticatedUser) -> Result<(), AppError> {
-    if !matches!(user.role, UserRole::Teacher) {
-        return Err(AppError::forbidden());
+fn user_list(users: Vec<crate::users::User>) -> UserListResponseDto {
+    UserListResponseDto {
+        items: users.into_iter().map(UserResponseDto::from).collect(),
     }
-
-    Ok(())
 }

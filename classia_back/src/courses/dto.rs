@@ -4,6 +4,7 @@ use uuid::Uuid;
 use validator::Validate;
 
 use crate::courses::models::{Course, CourseStatus, Enrollment};
+use crate::users::UserRole;
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct CourseCreateDto {
@@ -77,10 +78,19 @@ pub struct TeacherResponseDto {
 }
 
 #[derive(Debug, Serialize)]
-pub struct StudentResponseDto {
+pub struct EnrollmentResponseDto {
+    pub course_id: Uuid,
+    pub student: EnrolledStudentDto,
+    pub enrolled_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct EnrolledStudentDto {
     pub id: Uuid,
     pub name: String,
     pub email: String,
+    pub role: UserRole,
+    pub status: String,
 }
 
 impl From<Course> for CourseResponseDto {
@@ -103,12 +113,18 @@ impl From<Course> for CourseResponseDto {
     }
 }
 
-impl From<Enrollment> for StudentResponseDto {
+impl From<Enrollment> for EnrollmentResponseDto {
     fn from(value: Enrollment) -> Self {
         Self {
-            id: value.student_id,
-            name: value.student_name,
-            email: value.student_email,
+            course_id: value.course_id,
+            student: EnrolledStudentDto {
+                id: value.student.id,
+                name: value.student.name,
+                email: value.student.email,
+                role: value.student.role,
+                status: value.student.status,
+            },
+            enrolled_at: value.enrolled_at,
         }
     }
 }

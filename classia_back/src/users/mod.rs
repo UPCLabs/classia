@@ -11,6 +11,7 @@ mod tests;
 use sqlx::PgPool;
 
 pub(crate) use api::route;
+pub(crate) use dto::{UserListResponseDto, UserResponseDto};
 pub(crate) use error::UserError;
 pub(crate) use models::{User, UserRole};
 pub(crate) use service::UserService;
