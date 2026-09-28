@@ -1,0 +1,9 @@
+name: Cambiar Estado de Usuario
+method: PATCH
+url: '{{BASE_URL}}/api/users/01a0d538-e033-7779-b487-2bbac976084a/status'
+body:
+  type: json
+  content: |-
+    {
+      "status": "inactive"
+    }

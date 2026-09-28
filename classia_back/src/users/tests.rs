@@ -3,15 +3,14 @@ use serde_json::json;
 use validator::Validate;
 
 use super::{
-    dto::{ChangePasswordDto, UpdateUserDto, UserCreateDto},
+    dto::{ChangePasswordDto, UpdateUserDto, UpdateUserStatusDto, UserCreateDto},
     error::UserError,
-    models::UserRole,
+    models::{UserRole, UserStatus},
 };
 use crate::error::AppError;
 
 #[test]
 fn user_roles_enforce_create_user_permission() {
-    // Usamos el método nativo del enum directamente
     assert!(UserRole::SuperAdmin.is_admin());
     assert!(UserRole::Admin.is_admin());
     assert!(!UserRole::Teacher.is_admin());
@@ -73,4 +72,33 @@ fn user_errors_map_to_stable_http_statuses() {
     assert_eq!(not_found.status, StatusCode::NOT_FOUND);
     assert_eq!(duplicate.status, StatusCode::CONFLICT);
     assert_eq!(invalid.status, StatusCode::BAD_REQUEST);
+}
+
+#[test]
+fn user_status_accepts_only_known_values() {
+    let active: UpdateUserStatusDto =
+        serde_json::from_value(json!({ "status": "active" })).expect("active is valid");
+    let inactive: UpdateUserStatusDto =
+        serde_json::from_value(json!({ "status": "inactive" })).expect("inactive is valid");
+
+    assert_eq!(active.status, UserStatus::Active);
+    assert_eq!(inactive.status.as_str(), "inactive");
+    assert!(serde_json::from_value::<UpdateUserStatusDto>(json!({ "status": "deleted" })).is_err());
+}
+
+#[test]
+fn admins_cannot_assign_or_modify_super_admin() {
+    assert!(UserRole::SuperAdmin.can_assign_role(&UserRole::SuperAdmin));
+    assert!(UserRole::Admin.can_assign_role(&UserRole::Teacher));
+    assert!(!UserRole::Admin.can_assign_role(&UserRole::SuperAdmin));
+}
+
+#[test]
+fn partial_user_updates_accept_missing_fields() {
+    let update: UpdateUserDto =
+        serde_json::from_value(json!({ "name": "Only Name" })).expect("partial update payload");
+
+    assert_eq!(update.name.as_deref(), Some("Only Name"));
+    assert_eq!(update.email, None);
+    assert_eq!(update.role, None);
 }

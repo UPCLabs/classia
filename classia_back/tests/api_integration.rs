@@ -209,7 +209,7 @@ async fn user_creation_enforces_roles_and_duplicate_email(pool: PgPool) {
     let student_cookie = login_cookie(&app, "student@example.com", "student-password").await;
     let payload = json!({
         "name": "New Teacher",
-        "email": "teacher@example.com",
+        "email": "Teacher@Example.com",
         "password": "teacher-password",
         "role": "Teacher"
     });
@@ -222,7 +222,13 @@ async fn user_creation_enforces_roles_and_duplicate_email(pool: PgPool) {
         Some(&admin_cookie),
     )
     .await;
-    assert_eq!(created.status(), StatusCode::OK);
+    assert_eq!(created.status(), StatusCode::CREATED);
+    let created = response_json(created).await;
+    assert_eq!(created["email"], "teacher@example.com");
+    assert_eq!(created["role"], "Teacher");
+    assert_eq!(created["status"], "active");
+    assert!(created.get("password").is_none());
+    assert!(created.get("token").is_none());
 
     let stored_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE email = $1")
         .bind("teacher@example.com")
@@ -255,6 +261,274 @@ async fn user_creation_enforces_roles_and_duplicate_email(pool: PgPool) {
     )
     .await;
     assert_eq!(forbidden.status(), StatusCode::FORBIDDEN);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn admins_can_read_update_and_change_user_status(pool: PgPool) {
+    let admin_id = insert_user(
+        &pool,
+        "admin@example.com",
+        "admin-password",
+        "admin",
+        "active",
+    )
+    .await;
+    let student_id = insert_user(
+        &pool,
+        "student@example.com",
+        "student-password",
+        "student",
+        "active",
+    )
+    .await;
+    let app = app(pool);
+    let admin_cookie = login_cookie(&app, "admin@example.com", "admin-password").await;
+
+    let fetched = request(
+        &app,
+        Method::GET,
+        &format!("/api/users/{student_id}"),
+        None,
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(fetched.status(), StatusCode::OK);
+    assert_eq!(response_json(fetched).await["email"], "student@example.com");
+
+    let missing = request(
+        &app,
+        Method::GET,
+        &format!("/api/users/{}", Uuid::now_v7()),
+        None,
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(missing.status(), StatusCode::NOT_FOUND);
+
+    let updated = request(
+        &app,
+        Method::PATCH,
+        &format!("/api/users/{student_id}"),
+        Some(json!({ "name": "Renamed Student", "email": "Renamed@Example.com" })),
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(updated.status(), StatusCode::OK);
+    let updated = response_json(updated).await;
+    assert_eq!(updated["name"], "Renamed Student");
+    assert_eq!(updated["email"], "renamed@example.com");
+
+    let deactivated = request(
+        &app,
+        Method::PATCH,
+        &format!("/api/users/{student_id}/status"),
+        Some(json!({ "status": "inactive" })),
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(deactivated.status(), StatusCode::OK);
+    assert_eq!(response_json(deactivated).await["status"], "inactive");
+
+    let reactivated = request(
+        &app,
+        Method::PATCH,
+        &format!("/api/users/{student_id}/status"),
+        Some(json!({ "status": "active" })),
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(reactivated.status(), StatusCode::OK);
+    assert_eq!(response_json(reactivated).await["status"], "active");
+
+    let invalid_status = request(
+        &app,
+        Method::PATCH,
+        &format!("/api/users/{student_id}/status"),
+        Some(json!({ "status": "deleted" })),
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(invalid_status.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+    let self_status = request(
+        &app,
+        Method::PATCH,
+        &format!("/api/users/{admin_id}/status"),
+        Some(json!({ "status": "inactive" })),
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(self_status.status(), StatusCode::BAD_REQUEST);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn admins_cannot_modify_super_admins_and_non_admins_are_forbidden(pool: PgPool) {
+    let super_admin_id = insert_user(
+        &pool,
+        "root@example.com",
+        "root-password",
+        "super_admin",
+        "active",
+    )
+    .await;
+    insert_user(
+        &pool,
+        "admin@example.com",
+        "admin-password",
+        "admin",
+        "active",
+    )
+    .await;
+    let student_id = insert_user(
+        &pool,
+        "student@example.com",
+        "student-password",
+        "student",
+        "active",
+    )
+    .await;
+    let app = app(pool);
+    let admin_cookie = login_cookie(&app, "admin@example.com", "admin-password").await;
+    let student_cookie = login_cookie(&app, "student@example.com", "student-password").await;
+
+    let deactivate_root = request(
+        &app,
+        Method::PATCH,
+        &format!("/api/users/{super_admin_id}/status"),
+        Some(json!({ "status": "inactive" })),
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(deactivate_root.status(), StatusCode::FORBIDDEN);
+
+    let rename_root = request(
+        &app,
+        Method::PATCH,
+        &format!("/api/users/{super_admin_id}"),
+        Some(json!({ "name": "Hijacked" })),
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(rename_root.status(), StatusCode::FORBIDDEN);
+
+    let promote_student = request(
+        &app,
+        Method::PATCH,
+        &format!("/api/users/{student_id}"),
+        Some(json!({ "role": "SuperAdmin" })),
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(promote_student.status(), StatusCode::FORBIDDEN);
+
+    for (method, uri, body) in [
+        (Method::GET, "/api/users".to_string(), None),
+        (Method::GET, format!("/api/users/{student_id}"), None),
+        (
+            Method::PATCH,
+            format!("/api/users/{student_id}"),
+            Some(json!({ "name": "Self Rename" })),
+        ),
+        (
+            Method::PATCH,
+            format!("/api/users/{super_admin_id}/status"),
+            Some(json!({ "status": "inactive" })),
+        ),
+    ] {
+        let response = request(&app, method, &uri, body, Some(&student_cookie)).await;
+        assert_eq!(response.status(), StatusCode::FORBIDDEN, "{uri}");
+    }
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn deactivated_users_lose_their_session_and_role_changes_apply_immediately(pool: PgPool) {
+    insert_user(
+        &pool,
+        "admin@example.com",
+        "admin-password",
+        "admin",
+        "active",
+    )
+    .await;
+    let student_id = insert_user(
+        &pool,
+        "student@example.com",
+        "student-password",
+        "student",
+        "active",
+    )
+    .await;
+    let app = app(pool);
+    let admin_cookie = login_cookie(&app, "admin@example.com", "admin-password").await;
+    let student_cookie = login_cookie(&app, "student@example.com", "student-password").await;
+
+    let before = request(
+        &app,
+        Method::GET,
+        "/api/auth/me",
+        None,
+        Some(&student_cookie),
+    )
+    .await;
+    assert_eq!(before.status(), StatusCode::OK);
+
+    let promoted = request(
+        &app,
+        Method::PATCH,
+        &format!("/api/users/{student_id}"),
+        Some(json!({ "role": "Admin" })),
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(promoted.status(), StatusCode::OK);
+
+    let list_as_promoted =
+        request(&app, Method::GET, "/api/users", None, Some(&student_cookie)).await;
+    assert_eq!(list_as_promoted.status(), StatusCode::OK);
+
+    let deactivated = request(
+        &app,
+        Method::PATCH,
+        &format!("/api/users/{student_id}/status"),
+        Some(json!({ "status": "inactive" })),
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(deactivated.status(), StatusCode::OK);
+
+    let after = request(
+        &app,
+        Method::GET,
+        "/api/auth/me",
+        None,
+        Some(&student_cookie),
+    )
+    .await;
+    assert_eq!(after.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(response_json(after).await["code"], "INVALID_TOKEN");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn login_ignores_email_case(pool: PgPool) {
+    insert_user(
+        &pool,
+        "mixed@example.com",
+        "correct-password",
+        "student",
+        "active",
+    )
+    .await;
+    let app = app(pool);
+
+    let response = request(
+        &app,
+        Method::POST,
+        "/api/auth/login",
+        Some(json!({ "email": "Mixed@Example.COM", "password": "correct-password" })),
+        None,
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
 }
 
 #[sqlx::test(migrations = "./migrations")]

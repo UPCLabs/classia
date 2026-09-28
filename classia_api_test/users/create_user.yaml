@@ -1,6 +1,6 @@
 name: create user
 method: POST
-url: '{{BASE_URL}}/api/users/create'
+url: '{{BASE_URL}}/users/create'
 body:
   type: json
   content: |-
