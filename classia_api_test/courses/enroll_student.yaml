@@ -1,0 +1,9 @@
+name: enroll student
+method: POST
+url: '{{BASE_URL}}/courses/01a0e90d-076a-7a65-9d96-f2c12bb3b7ea/students'
+body:
+  type: json
+  content: |-
+    {
+      "student_id": "01a0e906-4a98-7c08-b1f7-446c98201723"
+    }

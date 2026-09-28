@@ -1,0 +1,3 @@
+name: search available students
+method: GET
+url: '{{BASE_URL}}/courses/01a0e90d-076a-7a65-9d96-f2c12bb3b7ea/available-students?q=ana'

@@ -1,0 +1,10 @@
+name: update course
+method: PATCH
+url: '{{BASE_URL}}/courses/01a0d540-0000-7000-8000-000000000001'
+body:
+  type: json
+  content: |-
+    {
+      "name": "Ingeniería de Software II",
+      "capacity": 35
+    }

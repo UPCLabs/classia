@@ -1,0 +1,13 @@
+name: create course
+method: POST
+url: '{{BASE_URL}}/courses'
+body:
+  type: json
+  content: |-
+    {
+      "name": "Ingeniería de Software",
+      "code": "IS212",
+      "teacher_id": "01a0e906-a812-76f7-be6d-a2222ab27858",
+      "status": "active",
+      "capacity": 30
+    }

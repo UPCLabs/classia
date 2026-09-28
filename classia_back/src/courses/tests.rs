@@ -5,8 +5,8 @@ use validator::Validate;
 
 use super::{
     dto::{CourseCreateDto, CourseResponseDto},
-    error::CourseError,
-    models::Course,
+    error::{CourseError, EnrollmentError},
+    models::{Course, CourseStatus},
 };
 use crate::error::AppError;
 
@@ -15,9 +15,8 @@ fn valid_course() -> CourseCreateDto {
         name: "Software Engineering".to_string(),
         code: "IS212".to_string(),
         teacher_id: Uuid::now_v7(),
-        password: "course-password".to_string(),
-        status: "active".to_string(),
-        quantity: 20,
+        status: CourseStatus::Active,
+        capacity: 20,
     }
 }
 
@@ -27,7 +26,7 @@ fn validates_course_fields() {
 
     let mut invalid = valid_course();
     invalid.code = "TOO-LONG".to_string();
-    invalid.quantity = -1;
+    invalid.capacity = 0;
 
     assert!(invalid.validate().is_err());
 }
@@ -40,9 +39,11 @@ fn course_response_copies_persisted_fields() {
         name: "Software Engineering".to_string(),
         code: "IS212".to_string(),
         teacher_id: Uuid::now_v7(),
-        password: "course-password".to_string(),
-        status: "active".to_string(),
-        quantity: 20,
+        teacher_name: "Teacher".to_string(),
+        teacher_email: "teacher@example.com".to_string(),
+        status: CourseStatus::Active,
+        capacity: 20,
+        enrolled_count: 0,
         created_at: now,
         updated_at: now,
     };
@@ -51,7 +52,8 @@ fn course_response_copies_persisted_fields() {
 
     assert_eq!(response.name, "Software Engineering");
     assert_eq!(response.code, "IS212");
-    assert_eq!(response.quantity, 20);
+    assert_eq!(response.capacity, 20);
+    assert_eq!(response.teacher.name, "Teacher");
 }
 
 #[test]
@@ -61,4 +63,76 @@ fn course_errors_map_to_stable_http_statuses() {
 
     assert_eq!(not_found.status, StatusCode::NOT_FOUND);
     assert_eq!(invalid.status, StatusCode::BAD_REQUEST);
+}
+
+#[test]
+fn course_status_accepts_only_contract_values() {
+    let inactive: CourseStatus = serde_json::from_str("\"inactive\"").expect("inactive is valid");
+
+    assert_eq!(inactive, CourseStatus::Inactive);
+    assert!(serde_json::from_str::<CourseStatus>("\"ended\"").is_err());
+}
+
+#[test]
+fn course_conflicts_map_to_contract_codes() {
+    let duplicate: AppError = CourseError::DuplicateCode.into();
+    let capacity: AppError = CourseError::CapacityBelowEnrollment.into();
+    let forbidden: AppError = CourseError::Forbidden.into();
+
+    assert_eq!(duplicate.status, StatusCode::CONFLICT);
+    assert_eq!(duplicate.code, "COURSE_CODE_EXISTS");
+    assert_eq!(capacity.status, StatusCode::CONFLICT);
+    assert_eq!(forbidden.status, StatusCode::FORBIDDEN);
+}
+
+#[test]
+fn enrollment_errors_map_to_contract_codes() {
+    let cases = [
+        (
+            EnrollmentError::CourseFull,
+            StatusCode::CONFLICT,
+            "COURSE_CAPACITY_REACHED",
+        ),
+        (
+            EnrollmentError::AlreadyEnrolled,
+            StatusCode::CONFLICT,
+            "STUDENT_ALREADY_ENROLLED",
+        ),
+        (
+            EnrollmentError::StudentNotFound,
+            StatusCode::NOT_FOUND,
+            "STUDENT_NOT_FOUND",
+        ),
+        (
+            EnrollmentError::InvalidStudentRole,
+            StatusCode::BAD_REQUEST,
+            "INVALID_STUDENT_ROLE",
+        ),
+        (
+            EnrollmentError::StudentInactive,
+            StatusCode::CONFLICT,
+            "STUDENT_INACTIVE",
+        ),
+        (
+            EnrollmentError::CourseNotActive,
+            StatusCode::CONFLICT,
+            "COURSE_NOT_ACTIVE",
+        ),
+        (
+            EnrollmentError::CourseNotFound,
+            StatusCode::NOT_FOUND,
+            "COURSE_NOT_FOUND",
+        ),
+        (
+            EnrollmentError::Forbidden,
+            StatusCode::FORBIDDEN,
+            "FORBIDDEN",
+        ),
+    ];
+
+    for (error, status, code) in cases {
+        let mapped: AppError = error.into();
+        assert_eq!(mapped.status, status, "{code}");
+        assert_eq!(mapped.code, code);
+    }
 }
