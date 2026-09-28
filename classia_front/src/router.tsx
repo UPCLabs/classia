@@ -7,6 +7,7 @@ import CoursesView from './views/StudentCourses/CoursesView'
 import CourseCreateView from './views/StudentCourses/CourseCreateView'
 import CourseDetailView from './views/StudentCourses/CourseDetailView'
 import CourseEditView from './views/StudentCourses/CourseEditView'
+import CourseStudentsView from './views/StudentCourses/CourseStudentsView'
 import ChangePasswordView from './views/Account/ChangePasswordView'
 import DashboardView from './views/DashboardView'
 import { AuthProvider } from './auth/AuthProvider'
@@ -82,6 +83,16 @@ export default function Router() {
               }
             />
             <Route path="/courses/:courseId" element={<CourseDetailView />} />
+            <Route
+              path="/courses/:courseId/students"
+              element={
+                <ProtectedRoute
+                  allowedRoles={['Teacher', 'Admin', 'SuperAdmin']}
+                >
+                  <CourseStudentsView />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/courses/:courseId/edit"
               element={

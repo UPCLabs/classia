@@ -8,6 +8,8 @@ import { AuthContext } from '../src/auth/context'
 import CourseCreateView from '../src/views/StudentCourses/CourseCreateView'
 import CourseDetailView from '../src/views/StudentCourses/CourseDetailView'
 import CourseEditView from '../src/views/StudentCourses/CourseEditView'
+import CoursesView from '../src/views/StudentCourses/CoursesView'
+import DashboardView from '../src/views/DashboardView'
 
 const apiMock = vi.hoisted(() => ({
   get: vi.fn(),
@@ -35,7 +37,7 @@ const course = {
 
 function renderCourseView(
   element: ReactNode,
-  role: 'Teacher' | 'Admin' | 'Student',
+  role: 'Teacher' | 'Admin' | 'SuperAdmin' | 'Student',
   initialPath: string,
 ) {
   const queryClient = new QueryClient({
@@ -61,7 +63,8 @@ function renderCourseView(
         <MemoryRouter initialEntries={[initialPath]}>
           <Routes>
             <Route path="/courses/new" element={element} />
-            <Route path="/courses/:courseId" element={element} />
+            <Route path="/courses" element={<CoursesView />} />
+            <Route path="/courses/:courseId" element={<CourseDetailView />} />
             <Route path="/courses/:courseId/edit" element={element} />
           </Routes>
         </MemoryRouter>
@@ -75,34 +78,79 @@ beforeEach(() => {
 })
 
 describe('CourseCreateView', () => {
-  it('submits course data with the authenticated teacher as owner', async () => {
+  it('creates with the current API contract and returns to the refreshed list', async () => {
     const user = userEvent.setup()
-    apiMock.post.mockResolvedValue({
-      data: { id: 'course-1', name: 'Programación', code: 'PRG101' },
-    })
+    apiMock.get.mockImplementation((url: string) =>
+      Promise.resolve({
+        data: url === '/courses' ? { items: [course] } : course,
+      }),
+    )
+    apiMock.post.mockResolvedValue({ data: course })
     renderCourseView(<CourseCreateView />, 'Teacher', '/courses/new')
 
-    await user.type(screen.getByLabelText('Nombre'), 'Programación')
+    await user.type(await screen.findByLabelText('Nombre'), 'Programación')
     await user.type(screen.getByLabelText('Código'), 'PRG101')
-    await user.type(
-      screen.getByLabelText('Contraseña del curso'),
-      'course-password',
-    )
     await user.clear(screen.getByLabelText('Cupo'))
     await user.type(screen.getByLabelText('Cupo'), '25')
     await user.click(screen.getByRole('button', { name: 'Crear curso' }))
 
-    expect(apiMock.post).toHaveBeenCalledWith('/courses/create', {
+    expect(apiMock.post).toHaveBeenCalledWith('/courses', {
       name: 'Programación',
       code: 'PRG101',
       teacher_id: 'teacher-1',
-      password: 'course-password',
       status: 'active',
-      quantity: 25,
+      capacity: 25,
     })
     expect(
-      await screen.findByText('Curso creado correctamente'),
+      await screen.findByText('El curso Programación se creó correctamente.'),
+    ).toHaveAttribute('role', 'status')
+    expect(await screen.findByRole('link', { name: /Programación/ })).toHaveAttribute(
+      'href',
+      '/courses/course-1',
+    )
+    expect(apiMock.get).toHaveBeenCalledWith('/courses')
+    await user.click(screen.getByRole('link', { name: /Programación/ }))
+    expect(
+      await screen.findByRole('heading', { name: 'Programación' }),
     ).toBeInTheDocument()
+  })
+
+  it('lets an administrator assign an active teacher', async () => {
+    const user = userEvent.setup()
+    const teacher = {
+      id: 'teacher-2',
+      name: 'Otra docente',
+      email: 'otra@example.com',
+      role: 'Teacher' as const,
+      status: 'active' as const,
+      created_at: '',
+      updated_at: '',
+    }
+    apiMock.get.mockImplementation((url: string) =>
+      Promise.resolve({
+        data:
+          url === '/users?role=Teacher&status=active'
+            ? { items: [teacher] }
+            : { items: [course] },
+      }),
+    )
+    apiMock.post.mockResolvedValue({ data: course })
+    renderCourseView(<CourseCreateView />, 'Admin', '/courses/new')
+
+    await user.type(await screen.findByLabelText('Nombre'), 'Programación')
+    await user.type(screen.getByLabelText('Código'), 'PRG101')
+    await user.selectOptions(screen.getByLabelText('Docente'), 'teacher-2')
+    await user.clear(screen.getByLabelText('Cupo'))
+    await user.type(screen.getByLabelText('Cupo'), '25')
+    await user.click(screen.getByRole('button', { name: 'Crear curso' }))
+
+    expect(apiMock.post).toHaveBeenCalledWith('/courses', {
+      name: 'Programación',
+      code: 'PRG101',
+      teacher_id: 'teacher-2',
+      status: 'active',
+      capacity: 25,
+    })
   })
 })
 
@@ -135,6 +183,26 @@ describe('CourseEditView', () => {
       name: 'Programación actualizada',
     })
   })
+
+  it('cancels editing and returns to details without submitting changes', async () => {
+    const user = userEvent.setup()
+    apiMock.get.mockResolvedValue({ data: course })
+    renderCourseView(
+      <CourseEditView />,
+      'Teacher',
+      '/courses/course-1/edit',
+    )
+
+    const name = await screen.findByLabelText('Nombre')
+    await user.clear(name)
+    await user.type(name, 'Cambio descartado')
+    await user.click(screen.getByRole('link', { name: 'Cancelar' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Programación' }),
+    ).toBeInTheDocument()
+    expect(apiMock.patch).not.toHaveBeenCalled()
+  })
 })
 
 describe('CourseDetailView', () => {
@@ -151,6 +219,10 @@ describe('CourseDetailView', () => {
       'href',
       '/courses/course-1/edit',
     )
+    expect(screen.getByRole('link', { name: 'Participantes' })).toHaveAttribute(
+      'href',
+      '/courses/course-1/students',
+    )
   })
 
   it('hides edit from a student', async () => {
@@ -163,5 +235,68 @@ describe('CourseDetailView', () => {
 
     expect(await screen.findByText('Programación')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Editar curso' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Participantes' })).not.toBeInTheDocument()
+  })
+
+  it('allows an administrator to edit a course', async () => {
+    apiMock.get.mockResolvedValue({ data: course })
+    renderCourseView(
+      <CourseDetailView />,
+      'Admin',
+      '/courses/course-1',
+    )
+
+    expect(await screen.findByRole('link', { name: 'Editar curso' })).toHaveAttribute(
+      'href',
+      '/courses/course-1/edit',
+    )
+    expect(screen.getByRole('link', { name: 'Participantes' })).toHaveAttribute(
+      'href',
+      '/courses/course-1/students',
+    )
+  })
+
+  it('allows a superadministrator to edit a course', async () => {
+    apiMock.get.mockResolvedValue({ data: course })
+    renderCourseView(
+      <CourseDetailView />,
+      'SuperAdmin',
+      '/courses/course-1',
+    )
+
+    expect(await screen.findByRole('link', { name: 'Editar curso' })).toHaveAttribute(
+      'href',
+      '/courses/course-1/edit',
+    )
+  })
+})
+
+describe('DashboardView', () => {
+  it('shows administrators a courses link', () => {
+    render(
+      <AuthContext.Provider
+        value={{
+          user: {
+            id: 'admin-1',
+            name: 'Admin',
+            email: 'admin@example.com',
+            role: 'Admin',
+          },
+          isLoading: false,
+          error: null,
+          signIn: vi.fn(),
+          signOut: vi.fn(),
+        }}
+      >
+        <MemoryRouter>
+          <DashboardView />
+        </MemoryRouter>
+      </AuthContext.Provider>,
+    )
+
+    expect(screen.getByRole('link', { name: /Cursos/ })).toHaveAttribute(
+      'href',
+      '/courses',
+    )
   })
 })

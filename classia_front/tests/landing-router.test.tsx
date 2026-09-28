@@ -101,6 +101,44 @@ describe('Router', () => {
       .toBeInTheDocument()
   })
 
+  it('shows direct navigation to home, courses and administration for admins', async () => {
+    renderRouter('/dashboard')
+
+    const navigation = await screen.findByRole('navigation', {
+      name: 'Navegación principal',
+    })
+    const homeLink = screen.getByRole('link', { name: 'Inicio' })
+    const coursesLink = screen.getByRole('link', { name: 'Cursos' })
+    const adminLink = screen.getByRole('link', { name: 'Administración' })
+    expect(homeLink).toHaveAttribute('href', '/dashboard')
+    expect(coursesLink).toHaveAttribute('href', '/courses')
+    expect(adminLink).toHaveAttribute('href', '/admin/users')
+    expect(navigation).toContainElement(
+      adminLink,
+    )
+  })
+
+  it('shows direct navigation to home and courses for teachers without user admin', async () => {
+    apiMock.get.mockResolvedValueOnce({
+      data: { ...authenticatedUser, role: 'Teacher' },
+    })
+
+    renderRouter('/dashboard')
+
+    await screen.findByRole('navigation', { name: 'Navegación principal' })
+    expect(screen.getByRole('link', { name: 'Inicio' })).toHaveAttribute(
+      'href',
+      '/dashboard',
+    )
+    expect(screen.getByRole('link', { name: 'Cursos' })).toHaveAttribute(
+      'href',
+      '/courses',
+    )
+    expect(
+      screen.queryByRole('link', { name: 'Administración' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('redirects protected routes to login without a session', async () => {
     apiMock.get.mockRejectedValueOnce({
       code: 'UNAUTHORIZED',

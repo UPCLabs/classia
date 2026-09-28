@@ -30,6 +30,12 @@ export type Curso = {
   updated_at: string
 }
 
+export type Inscripcion = {
+  course_id: string
+  student: Pick<Usuario, 'id' | 'name' | 'email' | 'role' | 'status'>
+  enrolled_at: string
+}
+
 export type ListResponse<T> = {
   items: T[]
 }

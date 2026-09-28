@@ -60,13 +60,32 @@ describe('CoursesView', () => {
             created_at: '2026-09-25T10:00:00Z',
             updated_at: '2026-09-25T10:00:00Z',
           },
+          {
+            id: 'course-2',
+            name: 'Bases de Datos',
+            code: 'BD101',
+            teacher: {
+              id: 'teacher-1',
+              name: 'Docente de prueba',
+              email: 'docente@example.com',
+            },
+            status: 'inactive',
+            capacity: 20,
+            enrolled_count: 0,
+            created_at: '2026-09-25T10:00:00Z',
+            updated_at: '2026-09-25T10:00:00Z',
+          },
         ],
       },
     })
     renderCoursesView()
 
     expect(await screen.findByText('Programación')).toBeInTheDocument()
-    expect(screen.getByText('Docente: Docente de prueba')).toBeInTheDocument()
+    expect(
+      screen.getAllByText('Docente: Docente de prueba'),
+    ).toHaveLength(2)
+    expect(screen.getByText('Activo')).toBeInTheDocument()
+    expect(screen.getByText('Inactivo')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Crear curso' })).toHaveAttribute(
       'href',
       '/courses/new',

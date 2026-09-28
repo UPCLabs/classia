@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import httpClient from '../../api/httpClient'
 import { useAuth } from '../../auth/context'
 import getErrorMessage from '../../auth/getErrorMessage'
@@ -7,6 +7,8 @@ import type { Curso, ListResponse } from '../../types/api'
 
 export default function CoursesView() {
   const { user } = useAuth()
+  const location = useLocation()
+  const locationState = location.state as { message?: string } | null
   const canCreateCourse =
     user?.role === 'Teacher' ||
     user?.role === 'Admin' ||
@@ -70,6 +72,15 @@ export default function CoursesView() {
         )}
       </div>
 
+      {locationState?.message && (
+        <p
+          className="mt-6 rounded-lg border border-verde-medio bg-white p-4 text-verde-oscuro"
+          role="status"
+        >
+          {locationState.message}
+        </p>
+      )}
+
       {courses.length === 0 ? (
         <p className="mt-8 rounded-xl bg-verde-medio p-6 text-center text-crema">
           No hay cursos para mostrar.
@@ -88,6 +99,9 @@ export default function CoursesView() {
               <h2 className="mt-1 text-xl font-bold">{course.name}</h2>
               <p className="mt-2 text-sm text-verde-oscuro/70">
                 Docente: {course.teacher.name}
+              </p>
+              <p className="mt-2 text-sm font-semibold">
+                {course.status === 'active' ? 'Activo' : 'Inactivo'}
               </p>
             </Link>
           ))}

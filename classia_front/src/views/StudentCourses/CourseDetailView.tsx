@@ -37,8 +37,10 @@ export default function CourseDetailView() {
   const course = courseQuery.data
   if (!course) return null
 
-  const canEditCourse =
+  const isCourseTeacher =
     user?.role === 'Teacher' && user.id === course.teacher.id
+  const canManageCourse =
+    isCourseTeacher || user?.role === 'Admin' || user?.role === 'SuperAdmin'
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
@@ -76,7 +78,15 @@ export default function CourseDetailView() {
           </div>
         </dl>
 
-        {canEditCourse && (
+        {canManageCourse && (
+          <Link
+            className="inline-flex rounded-lg border border-verde-medio px-5 py-3 font-semibold text-verde-medio transition hover:bg-verde-medio/10"
+            to={`/courses/${course.id}/students`}
+          >
+            Participantes
+          </Link>
+        )}
+        {canManageCourse && (
           <Link
             className="mt-8 inline-flex rounded-lg bg-dorado px-5 py-3 font-semibold text-verde-oscuro transition hover:brightness-110"
             to={`/courses/${course.id}/edit`}
