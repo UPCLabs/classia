@@ -47,6 +47,14 @@ beforeEach(() => {
 })
 
 describe('ChangePasswordView', () => {
+  it('shows the 8 to 20 character password policy', () => {
+    renderChangePassword()
+
+    expect(
+      screen.getByText('Debe tener entre 8 y 20 caracteres.'),
+    ).toBeInTheDocument()
+  })
+
   it('changes the password, signs out, and redirects to login', async () => {
     const user = userEvent.setup()
     apiMock.patch.mockResolvedValue({ status: 204 })

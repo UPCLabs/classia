@@ -77,7 +77,7 @@ impl UserService {
 
         if !caller_role.can_assign_role(&body.role) {
             return Err(UserError::Forbidden(
-                "Admins cannot create a SuperAdmin".into(),
+                "Un administrador no puede crear un Superadministrador".into(),
             ));
         }
 

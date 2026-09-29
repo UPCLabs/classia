@@ -158,6 +158,10 @@ async fn login_accepts_valid_credentials_and_rejects_invalid_or_inactive_users(p
     )
     .await;
     assert_eq!(invalid.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(
+        response_json(invalid).await["message"],
+        "Credenciales inválidas"
+    );
 
     let inactive = request(
         &app,
@@ -246,6 +250,25 @@ async fn user_creation_enforces_roles_and_duplicate_email(pool: PgPool) {
     )
     .await;
     assert_eq!(duplicate.status(), StatusCode::CONFLICT);
+
+    let super_admin = request(
+        &app,
+        Method::POST,
+        "/api/users/create",
+        Some(json!({
+            "name": "Super Candidate",
+            "email": "super@example.com",
+            "password": "super-password",
+            "role": "SuperAdmin"
+        })),
+        Some(&admin_cookie),
+    )
+    .await;
+    assert_eq!(super_admin.status(), StatusCode::FORBIDDEN);
+    assert_eq!(
+        response_json(super_admin).await["message"],
+        "Un administrador no puede crear un Superadministrador"
+    );
 
     let forbidden = request(
         &app,

@@ -36,7 +36,7 @@ impl From<AuthError> for AppError {
                 AppError {
                     status: StatusCode::UNAUTHORIZED,
                     code: StatusCode::UNAUTHORIZED.as_str(),
-                    message: "Invalid credetianls".to_string(),
+                    message: "Credenciales inválidas".to_string(),
                 }
             }
             AuthError::InactiveUser => AppError {

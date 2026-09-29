@@ -68,6 +68,9 @@ export default function ChangePasswordView() {
               })}
               type="password"
             />
+            <span className="text-xs text-crema/80">
+              Debe tener entre 8 y 20 caracteres.
+            </span>
             {errors.newPassword && (
               <span className="text-xs text-red-200" role="alert">
                 {errors.newPassword.message}
