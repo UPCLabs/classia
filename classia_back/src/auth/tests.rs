@@ -103,6 +103,7 @@ fn auth_errors_map_to_expected_statuses() {
     let internal: AppError = AuthError::InternalError("failure".to_string()).into();
 
     assert_eq!(invalid.status, axum::http::StatusCode::UNAUTHORIZED);
+    assert_eq!(invalid.message, "Credenciales inválidas");
     assert_eq!(inactive.status, axum::http::StatusCode::BAD_REQUEST);
     assert_eq!(
         internal.status,
