@@ -23,8 +23,9 @@ export default function DashboardView() {
     return null
   }
 
-  const canViewCourses = user.role === 'Teacher' || user.role === 'Student'
+  const canViewCourses = true
   const canManageUsers = user.role === 'SuperAdmin' || user.role === 'Admin'
+  const coursesTitle = canManageUsers ? 'Cursos' : 'Mis cursos'
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
@@ -45,7 +46,7 @@ export default function DashboardView() {
             className="rounded-xl border-l-4 border-dorado bg-white p-6 shadow-sm transition hover:shadow-md"
             to="/courses"
           >
-            <h2 className="text-xl font-bold">Mis cursos</h2>
+            <h2 className="text-xl font-bold">{coursesTitle}</h2>
             <p className="mt-2 text-verde-oscuro/75">
               Consulta los cursos asociados a tu cuenta.
             </p>

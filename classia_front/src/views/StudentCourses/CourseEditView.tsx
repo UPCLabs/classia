@@ -13,7 +13,6 @@ const courseFormValues = (course: Curso): CourseFormValues => ({
   name: course.name,
   code: course.code,
   teacher_id: course.teacher.id,
-  password: '',
   status: course.status,
   capacity: course.capacity,
 })
@@ -149,6 +148,12 @@ export default function CourseEditView() {
           to={`/courses/${course.id}`}
         >
           Volver al detalle
+        </Link>
+        <Link
+          className="ml-4 font-semibold text-verde-medio underline"
+          to={`/courses/${course.id}`}
+        >
+          Cancelar
         </Link>
         <h1 className="mt-3 text-3xl font-bold">Editar curso</h1>
       </div>
