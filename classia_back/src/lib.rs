@@ -33,7 +33,7 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
     let user_service = Arc::new(users::build_service(pool.clone()));
     let course_service = Arc::new(courses::build_service(pool.clone(), user_service.clone()));
     let enrollment_service = Arc::new(courses::build_enrollment_service(
-        pool.clone(), // antes: pool
+        pool.clone(), 
         user_service.clone(),
         course_service.clone(),
     ));
