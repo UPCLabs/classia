@@ -11,6 +11,8 @@ mod tests;
 use sqlx::PgPool;
 
 pub(crate) use api::route;
+pub(crate) use error::CourseError;
+pub(crate) use models::CourseStatus;
 pub(crate) use service::{CourseService, EnrollmentService};
 
 pub(crate) fn build_service(
