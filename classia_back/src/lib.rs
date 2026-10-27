@@ -5,6 +5,7 @@ use sqlx::PgPool;
 
 use crate::{auth::JwtConfig, state::ClassiaState};
 
+mod activities;
 mod auth;
 mod config;
 mod courses;
@@ -32,10 +33,11 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
     let user_service = Arc::new(users::build_service(pool.clone()));
     let course_service = Arc::new(courses::build_service(pool.clone(), user_service.clone()));
     let enrollment_service = Arc::new(courses::build_enrollment_service(
-        pool,
+        pool.clone(),
         user_service.clone(),
         course_service.clone(),
     ));
+    let activity_service = Arc::new(activities::build_service(pool, course_service.clone()));
     let auth_service = Arc::new(
         auth::build_service(
             JwtConfig {
@@ -52,6 +54,7 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
         user_service,
         course_service,
         enrollment_service,
+        activity_service,
         auth_service,
     );
 
@@ -60,6 +63,7 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
         .nest("/api/auth", auth::route())
         .nest("/api/users", users::route())
         .nest("/api/courses", courses::route())
+        .nest("/api/activities", activities::route())
         .with_state(state))
 }
 
