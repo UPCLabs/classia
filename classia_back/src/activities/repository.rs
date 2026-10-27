@@ -32,4 +32,18 @@ impl ActivityRepository {
         .fetch_optional(&self.pool)
         .await
     }
+
+    pub async fn list_published_by_course(
+        &self,
+        course_id: Uuid,
+    ) -> Result<Vec<Activity>, sqlx::Error> {
+        query_as::<_, Activity>(
+            "SELECT * FROM activities
+             WHERE course_id = $1 AND status = 'published'
+             ORDER BY due_at ASC",
+        )
+        .bind(course_id)
+        .fetch_all(&self.pool)
+        .await
+    }
 }

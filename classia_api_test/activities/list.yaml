@@ -1,0 +1,3 @@
+name: list activities by course
+method: GET
+url: '{{BASE_URL}}/activities/course/{{COURSE_ID}}'

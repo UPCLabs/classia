@@ -59,6 +59,49 @@ impl ActivityService {
             .ok_or(ActivityError::AlreadyPublished)
     }
 
+    pub async fn list_for_user(
+        &self,
+        actor_id: Uuid,
+        actor_role: &UserRole,
+        course_id: Uuid,
+    ) -> Result<Vec<Activity>, ActivityError> {
+        self.course_service
+            .get_for_user(course_id, actor_id, actor_role)
+            .await
+            .map_err(map_course_access_error)?;
+
+        match actor_role {
+            UserRole::Student => self
+                .repository
+                .list_published_by_course(course_id)
+                .await
+                .map_err(ActivityError::Database),
+            _ => Err(ActivityError::Forbidden),
+        }
+    }
+
+    pub async fn get_for_user(
+        &self,
+        actor_id: Uuid,
+        actor_role: &UserRole,
+        activity_id: Uuid,
+    ) -> Result<Activity, ActivityError> {
+        let activity = self.find(activity_id).await?;
+
+        self.course_service
+            .get_for_user(activity.course_id, actor_id, actor_role)
+            .await
+            .map_err(map_course_access_error)?;
+
+        match actor_role {
+            UserRole::Student if activity.status == ActivityStatus::Draft => {
+                Err(ActivityError::ActivityNotFound)
+            }
+            UserRole::Student => Ok(activity),
+            _ => Err(ActivityError::Forbidden),
+        }
+    }
+
     async fn find(&self, activity_id: Uuid) -> Result<Activity, ActivityError> {
         self.repository
             .get_by_id(activity_id)
