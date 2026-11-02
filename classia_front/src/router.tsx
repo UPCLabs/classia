@@ -8,6 +8,9 @@ import CourseCreateView from './views/StudentCourses/CourseCreateView'
 import CourseDetailView from './views/StudentCourses/CourseDetailView'
 import CourseEditView from './views/StudentCourses/CourseEditView'
 import CourseStudentsView from './views/StudentCourses/CourseStudentsView'
+import ActivityCreateView from './views/StudentCourses/ActivityCreateView'
+import ActivityDetailView from './views/StudentCourses/ActivityDetailView'
+import ActivityEditView from './views/StudentCourses/ActivityEditView'
 import ChangePasswordView from './views/Account/ChangePasswordView'
 import DashboardView from './views/DashboardView'
 import { AuthProvider } from './auth/AuthProvider'
@@ -83,6 +86,26 @@ export default function Router() {
               }
             />
             <Route path="/courses/:courseId" element={<CourseDetailView />} />
+            <Route
+              path="/activities/:activityId"
+              element={<ActivityDetailView />}
+            />
+            <Route
+              path="/courses/:courseId/activities/new"
+              element={
+                <ProtectedRoute allowedRoles={['Teacher']}>
+                  <ActivityCreateView />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/activities/:activityId/edit"
+              element={
+                <ProtectedRoute allowedRoles={['Teacher']}>
+                  <ActivityEditView />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/courses/:courseId/students"
               element={

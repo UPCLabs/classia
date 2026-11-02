@@ -11,6 +11,7 @@ pub enum ActivityError {
     Validation(String),
     DueDateNotFuture,
     NoChanges,
+    AlreadyPublished,
     Database(sqlx::Error),
 }
 
@@ -56,6 +57,11 @@ impl From<ActivityError> for AppError {
                 StatusCode::BAD_REQUEST,
                 "NO_CHANGES",
                 "No hay cambios para aplicar",
+            ),
+            ActivityError::AlreadyPublished => AppError::new(
+                StatusCode::CONFLICT,
+                "ACTIVITY_ALREADY_PUBLISHED",
+                "La actividad ya está publicada",
             ),
             ActivityError::Database(e) => {
                 error!("Database error: {e}");

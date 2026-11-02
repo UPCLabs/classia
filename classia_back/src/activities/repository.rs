@@ -30,4 +30,32 @@ impl ActivityRepository {
             .bind(body.title).bind(body.description).bind(body.due_at).bind(id).execute(&self.pool).await?;
         self.get(id).await
     }
+
+    pub async fn publish(&self, activity_id: Uuid) -> Result<Option<Activity>, sqlx::Error> {
+        query_as::<_, Activity>(
+            "UPDATE activities
+             SET status = 'published',
+                 published_at = CURRENT_TIMESTAMP,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = $1 AND status = 'draft'
+             RETURNING *",
+        )
+        .bind(activity_id)
+        .fetch_optional(&self.pool)
+        .await
+    }
+
+    pub async fn list_published_by_course(
+        &self,
+        course_id: Uuid,
+    ) -> Result<Vec<Activity>, sqlx::Error> {
+        query_as::<_, Activity>(
+            "SELECT * FROM activities
+             WHERE course_id = $1 AND status = 'published'
+             ORDER BY due_at ASC",
+        )
+        .bind(course_id)
+        .fetch_all(&self.pool)
+        .await
+    }
 }
