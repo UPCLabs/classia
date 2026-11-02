@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { AuthContext } from '../src/auth/context'
@@ -8,6 +9,7 @@ import CourseDetailView from '../src/views/StudentCourses/CourseDetailView'
 
 const apiMock = vi.hoisted(() => ({
   get: vi.fn(),
+  post: vi.fn(),
 }))
 
 vi.mock('../src/api/httpClient', () => ({ default: apiMock }))
@@ -88,6 +90,7 @@ function renderActivityPage(path: string, role: Role) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.stubGlobal('confirm', vi.fn(() => true))
 })
 
 describe('ActivityList', () => {
@@ -132,6 +135,90 @@ describe('ActivityList', () => {
     expect(screen.queryByText('Actividad en borrador')).not.toBeInTheDocument()
     expect(screen.queryByText('Borrador')).not.toBeInTheDocument()
     expect(apiMock.get).toHaveBeenCalledWith('/courses/course-1/activities')
+  })
+
+  it('lets the responsible teacher confirm and publish a draft activity', async () => {
+    let published = false
+    apiMock.get.mockImplementation((url: string) => {
+      if (url === '/courses/course-1') {
+        return Promise.resolve({ data: course })
+      }
+      if (url === '/courses/course-1/activities') {
+        return Promise.resolve({
+          data: {
+            items: [
+              published
+                ? { ...draftActivity, status: 'published', published_at: '2099-10-26T15:20:00Z' }
+                : draftActivity,
+            ],
+          },
+        })
+      }
+      throw new Error(`Unexpected GET ${url}`)
+    })
+    apiMock.post.mockImplementation(() => {
+      published = true
+      return Promise.resolve({
+        data: {
+          ...draftActivity,
+          status: 'published',
+          published_at: '2099-10-26T15:20:00Z',
+        },
+      })
+    })
+    renderActivityPage('/courses/course-1', 'Teacher')
+
+    const publishButton = await screen.findByRole('button', { name: 'Publicar' })
+    await userEvent.click(publishButton)
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      '¿Publicar "Actividad en borrador" para los estudiantes?',
+    )
+    expect(apiMock.post).toHaveBeenCalledWith(
+      '/activities/activity-draft/publish',
+    )
+    expect(await screen.findByText('Actividad publicada.')).toBeInTheDocument()
+    expect(await screen.findByText('Publicada')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Publicar' })).not.toBeInTheDocument()
+  })
+
+  it('does not show publish controls to admins', async () => {
+    apiMock.get.mockImplementation((url: string) =>
+      Promise.resolve({
+        data:
+          url === '/courses/course-1'
+            ? course
+            : { items: [draftActivity] },
+      }),
+    )
+    renderActivityPage('/courses/course-1', 'Admin')
+
+    expect(await screen.findByText('Actividad en borrador')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Publicar' })).not.toBeInTheDocument()
+  })
+
+  it('shows the API error when publishing is rejected', async () => {
+    apiMock.get.mockImplementation((url: string) =>
+      Promise.resolve({
+        data:
+          url === '/courses/course-1'
+            ? course
+            : { items: [draftActivity] },
+      }),
+    )
+    apiMock.post.mockRejectedValue({
+      code: 'ACTIVITY_ALREADY_PUBLISHED',
+      message: 'La actividad ya está publicada',
+    })
+    renderActivityPage('/courses/course-1', 'Teacher')
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Publicar' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'La actividad ya está publicada',
+    )
   })
 
   it('shows the empty-list message when the course has no activities', async () => {

@@ -86,7 +86,7 @@ export default function CourseDetailView() {
           </div>
         </dl>
 
-        <ActivityList courseId={course.id} />
+        <ActivityList canPublish={isCourseTeacher} courseId={course.id} />
 
         <div className="mt-8 flex flex-wrap gap-4">
           {canManageCourse && (
