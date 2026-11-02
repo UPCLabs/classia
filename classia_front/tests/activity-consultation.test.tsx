@@ -115,6 +115,14 @@ describe('ActivityList', () => {
     expect(
       screen.getByRole('link', { name: /Actividad en borrador/ }),
     ).toHaveAttribute('href', '/activities/activity-draft')
+    expect(screen.getAllByRole('link', { name: 'Editar actividad' })).toEqual([
+      expect.objectContaining({
+        href: expect.stringContaining('/activities/activity-draft/edit'),
+      }),
+      expect.objectContaining({
+        href: expect.stringContaining('/activities/activity-published/edit'),
+      }),
+    ])
   })
 
   it('only displays published activities to students', async () => {
@@ -134,6 +142,9 @@ describe('ActivityList', () => {
     expect(await screen.findByText('Actividad publicada')).toBeInTheDocument()
     expect(screen.queryByText('Actividad en borrador')).not.toBeInTheDocument()
     expect(screen.queryByText('Borrador')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'Editar actividad' }),
+    ).not.toBeInTheDocument()
     expect(apiMock.get).toHaveBeenCalledWith('/courses/course-1/activities')
   })
 
@@ -195,6 +206,9 @@ describe('ActivityList', () => {
 
     expect(await screen.findByText('Actividad en borrador')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Publicar' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: 'Editar actividad' }),
+    ).not.toBeInTheDocument()
   })
 
   it('shows the API error when publishing is rejected', async () => {

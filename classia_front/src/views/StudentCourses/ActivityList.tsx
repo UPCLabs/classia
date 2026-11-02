@@ -116,7 +116,17 @@ function ActivityListItem({
           Fecha límite: {formatDueDate(activity.due_at)} (Bogotá)
         </p>
       </Link>
-      {canPublish && <PublishActivityButton activity={activity} />}
+      {canPublish && (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Link
+            className="rounded-lg border border-verde-medio px-4 py-2 font-semibold text-verde-medio transition hover:bg-verde-medio hover:text-crema"
+            to={`/activities/${activity.id}/edit`}
+          >
+            Editar actividad
+          </Link>
+          <PublishActivityButton activity={activity} />
+        </div>
+      )}
     </li>
   )
 }

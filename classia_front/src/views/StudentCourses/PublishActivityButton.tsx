@@ -51,7 +51,7 @@ export default function PublishActivityButton({
   if (activity.status !== 'draft' && !publishMutation.isSuccess) return null
 
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3">
       {activity.status === 'draft' && (
         <button
           className="rounded-lg bg-verde-medio px-4 py-2 font-semibold text-crema transition hover:bg-verde-oscuro disabled:opacity-60"
