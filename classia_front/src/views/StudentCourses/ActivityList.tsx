@@ -4,9 +4,11 @@ import { listCourseActivities } from '../../api/activities'
 import { useAuth } from '../../auth/context'
 import getErrorMessage from '../../auth/getErrorMessage'
 import type { Activity } from '../../types/api'
+import PublishActivityButton from './PublishActivityButton'
 
 type ActivityListProps = {
   courseId: string
+  canPublish: boolean
 }
 
 const bogotaDateFormatter = new Intl.DateTimeFormat('es-CO', {
@@ -19,7 +21,7 @@ function formatDueDate(value: string): string {
   return bogotaDateFormatter.format(new Date(value))
 }
 
-export default function ActivityList({ courseId }: ActivityListProps) {
+export default function ActivityList({ courseId, canPublish }: ActivityListProps) {
   const { user } = useAuth()
   const activitiesQuery = useQuery({
     queryKey: ['activities', courseId],
@@ -67,6 +69,7 @@ export default function ActivityList({ courseId }: ActivityListProps) {
           {visibleActivities.map((activity) => (
             <ActivityListItem
               activity={activity}
+              canPublish={canPublish}
               key={activity.id}
               showStatus={user?.role !== 'Student'}
             />
@@ -79,14 +82,19 @@ export default function ActivityList({ courseId }: ActivityListProps) {
 
 type ActivityListItemProps = {
   activity: Activity
+  canPublish: boolean
   showStatus: boolean
 }
 
-function ActivityListItem({ activity, showStatus }: ActivityListItemProps) {
+function ActivityListItem({
+  activity,
+  canPublish,
+  showStatus,
+}: ActivityListItemProps) {
   return (
-    <li>
+    <li className="rounded-xl border-l-4 border-dorado bg-crema/40 p-5">
       <Link
-        className="block rounded-xl border-l-4 border-dorado bg-crema/40 p-5 transition hover:bg-crema/70"
+        className="block rounded-lg transition hover:text-verde-medio focus-visible:outline focus-visible:outline-2 focus-visible:outline-verde-medio"
         to={`/activities/${activity.id}`}
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -108,6 +116,7 @@ function ActivityListItem({ activity, showStatus }: ActivityListItemProps) {
           Fecha límite: {formatDueDate(activity.due_at)} (Bogotá)
         </p>
       </Link>
+      {canPublish && <PublishActivityButton activity={activity} />}
     </li>
   )
 }

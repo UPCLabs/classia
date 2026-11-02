@@ -42,6 +42,13 @@ export async function updateActivity(
   return data
 }
 
+export async function publishActivity(activityId: string): Promise<Activity> {
+  const { data } = await httpClient.post<Activity>(
+    `/activities/${activityId}/publish`,
+  )
+  return data
+}
+
 export function bogotaDateTimeToUtc(value: string): string {
   const [date, time] = value.split('T')
   const [year, month, day] = date.split('-').map(Number)
