@@ -3,6 +3,7 @@ import type {
   Activity,
   ActivityCreate,
   ActivityUpdate,
+  ListResponse,
 } from '../types/api'
 
 const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000
@@ -21,6 +22,13 @@ export async function createActivity(
 export async function getActivity(activityId: string): Promise<Activity> {
   const { data } = await httpClient.get<Activity>(`/activities/${activityId}`)
   return data
+}
+
+export async function listCourseActivities(courseId: string): Promise<Activity[]> {
+  const { data } = await httpClient.get<ListResponse<Activity>>(
+    `/courses/${courseId}/activities`,
+  )
+  return data.items
 }
 
 export async function updateActivity(

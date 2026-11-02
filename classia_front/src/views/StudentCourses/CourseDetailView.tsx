@@ -4,6 +4,7 @@ import httpClient from '../../api/httpClient'
 import { useAuth } from '../../auth/context'
 import getErrorMessage from '../../auth/getErrorMessage'
 import type { Curso } from '../../types/api'
+import ActivityList from './ActivityList'
 
 export default function CourseDetailView() {
   const { courseId } = useParams()
@@ -84,6 +85,8 @@ export default function CourseDetailView() {
             <dd className="mt-1 font-semibold">{course.enrolled_count}</dd>
           </div>
         </dl>
+
+        <ActivityList courseId={course.id} />
 
         <div className="mt-8 flex flex-wrap gap-4">
           {canManageCourse && (
