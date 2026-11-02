@@ -30,7 +30,6 @@ impl ActivityService {
         course_id: Uuid,
         mut body: ActivityCreateDto,
     ) -> Result<Activity, ActivityError> {
-        // El orden contractual es autenticación, existencia, permiso, estado del curso y campos.
         let course = self
             .course_service
             .get_for_user(course_id, actor, role)
@@ -155,7 +154,11 @@ impl ActivityService {
                 .list_published_by_course(course_id)
                 .await
                 .map_err(ActivityError::Database),
-            _ => Err(ActivityError::Forbidden),
+            _ => self
+                .repository
+                .list_activities_by_course(course_id)
+                .await
+                .map_err(ActivityError::Database),
         }
     }
 
@@ -173,11 +176,14 @@ impl ActivityService {
             .map_err(ActivityError::from)?;
 
         match actor_role {
-            UserRole::Student if activity.status == ActivityStatus::Draft => {
-                Err(ActivityError::ActivityNotFound)
+            UserRole::Student => {
+                if activity.status == ActivityStatus::Draft {
+                    return Err(ActivityError::ActivityNotFound);
+                }
+
+                Ok(activity)
             }
-            UserRole::Student => Ok(activity),
-            _ => Err(ActivityError::Forbidden),
+            _ => Ok(activity),
         }
     }
 
