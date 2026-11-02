@@ -50,7 +50,7 @@ export default function ActivityForm({
 
   return (
     <form
-      className="grid gap-6 rounded-2xl bg-white p-5 shadow-sm sm:p-8"
+      className="grid gap-6 rounded-2xl bg-crema/40 p-5 shadow-sm sm:p-8"
       onSubmit={handleSubmit(submit)}
     >
       <fieldset className="grid gap-5 rounded-xl border border-verde-medio/25 p-4 sm:p-6">
