@@ -1,8 +1,21 @@
+use super::models::{Activity, ActivityStatus};
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::activities::models::{Activity, ActivityStatus};
+#[derive(Debug, Deserialize)]
+pub struct ActivityCreateDto {
+    pub title: String,
+    pub description: String,
+    pub due_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ActivityUpdateDto {
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub due_at: Option<DateTime<Utc>>,
+}
 
 #[derive(Debug, Serialize)]
 pub struct ActivityResponseDto {

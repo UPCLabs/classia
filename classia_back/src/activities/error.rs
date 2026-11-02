@@ -1,17 +1,29 @@
+use crate::{courses::CourseError, error::AppError};
 use axum::http::StatusCode;
 use tracing::error;
-
-use crate::error::AppError;
 
 #[derive(Debug)]
 pub enum ActivityError {
     ActivityNotFound,
-    CourseNotFound,
     Forbidden,
+    CourseNotFound,
     CourseNotActive,
-    AlreadyPublished,
+    Validation(String),
     DueDateNotFuture,
+    NoChanges,
+    AlreadyPublished,
     Database(sqlx::Error),
+}
+
+impl From<CourseError> for ActivityError {
+    fn from(value: CourseError) -> Self {
+        match value {
+            CourseError::CourseNotFound => Self::CourseNotFound,
+            CourseError::Forbidden => Self::Forbidden,
+            CourseError::Database(e) => Self::Database(e),
+            _ => Self::CourseNotFound,
+        }
+    }
 }
 
 impl From<ActivityError> for AppError {
@@ -20,39 +32,45 @@ impl From<ActivityError> for AppError {
             ActivityError::ActivityNotFound => AppError::new(
                 StatusCode::NOT_FOUND,
                 "ACTIVITY_NOT_FOUND",
-                "Activity not found",
+                "Actividad no encontrada",
             ),
             ActivityError::CourseNotFound => AppError::new(
                 StatusCode::NOT_FOUND,
                 "COURSE_NOT_FOUND",
-                "Course not found",
+                "Curso no encontrado",
             ),
-            ActivityError::Forbidden => AppError::forbidden(),
             ActivityError::CourseNotActive => AppError::new(
                 StatusCode::CONFLICT,
                 "COURSE_NOT_ACTIVE",
-                "The course is not active",
+                "El curso no está activo",
+            ),
+            ActivityError::Forbidden => AppError::forbidden(),
+            ActivityError::Validation(message) => {
+                AppError::new(StatusCode::BAD_REQUEST, "VALIDATION_ERROR", message)
+            }
+            ActivityError::DueDateNotFuture => AppError::new(
+                StatusCode::BAD_REQUEST,
+                "DUE_DATE_NOT_FUTURE",
+                "La fecha de entrega debe ser futura",
+            ),
+            ActivityError::NoChanges => AppError::new(
+                StatusCode::BAD_REQUEST,
+                "NO_CHANGES",
+                "No hay cambios para aplicar",
             ),
             ActivityError::AlreadyPublished => AppError::new(
                 StatusCode::CONFLICT,
                 "ACTIVITY_ALREADY_PUBLISHED",
-                "The activity is already published",
+                "La actividad ya está publicada",
             ),
-            ActivityError::DueDateNotFuture => AppError::new(
-                StatusCode::BAD_REQUEST,
-                "DUE_DATE_NOT_FUTURE",
-                "The due date must be in the future",
-            ),
-            ActivityError::Database(error) => database_error(error),
+            ActivityError::Database(e) => {
+                error!("Database error: {e}");
+                AppError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "DATABASE_ERROR",
+                    "Error de base de datos",
+                )
+            }
         }
     }
-}
-
-fn database_error(database: sqlx::Error) -> AppError {
-    error!("Database error: {database}");
-    AppError::new(
-        StatusCode::INTERNAL_SERVER_ERROR,
-        "DATABASE_ERROR",
-        "Error de base de datos",
-    )
 }
