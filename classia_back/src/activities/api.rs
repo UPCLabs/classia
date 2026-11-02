@@ -9,13 +9,12 @@ use serde::Serialize;
 use uuid::Uuid;
 
 #[derive(Debug, Serialize)]
-struct ActivityListResponseDto {
+pub(crate) struct ActivityListResponseDto {
     items: Vec<ActivityResponseDto>,
 }
 
 pub fn route() -> Router<ClassiaState> {
     Router::new()
-        .route("/course/{course_id}", get(list_activities_by_course))
         .route("/{activity_id}", get(get_activity).patch(update_activity))
         .route("/{activity_id}/publish", post(publish_activity))
 }
@@ -48,7 +47,7 @@ async fn update_activity(
     ))
 }
 
-async fn list_activities_by_course(
+pub(crate) async fn list_activities_by_course(
     user: AuthenticatedUser,
     State(state): State<ClassiaState>,
     Path(course_id): Path<Uuid>,

@@ -1,4 +1,4 @@
-use crate::activities::api::create_activity;
+use crate::activities::api::{create_activity, list_activities_by_course};
 use axum::{
     Json, Router,
     extract::{Path, Query, State},
@@ -34,7 +34,7 @@ pub fn route() -> Router<ClassiaState> {
         .route("/", get(list_courses).post(create_course))
         .route(
             "/{course_id}/activities",
-            axum::routing::post(create_activity),
+            get(list_activities_by_course).post(create_activity),
         )
         .route("/{course_id}", get(get_course).patch(update_course))
         .route(
