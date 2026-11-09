@@ -4,6 +4,7 @@ mod dto;
 mod error;
 mod extractor;
 mod jwt;
+mod mfa;
 mod service;
 
 #[cfg(test)]

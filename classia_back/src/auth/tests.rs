@@ -22,7 +22,7 @@ fn user(role: UserRole) -> User {
         password: "unused".to_string(),
         role,
         status: "active".to_string(),
-        token: String::new(),
+        token: None,
         created_at: now,
         updated_at: now,
     }

@@ -1,7 +1,15 @@
 use std::sync::Arc;
 
+use uuid::Uuid;
+
 use crate::{
-    auth::{claims::Claims, dto::LoginRequest, error::AuthError, jwt::JwtService},
+    auth::{
+        claims::Claims,
+        dto::LoginRequest,
+        error::AuthError,
+        jwt::JwtService,
+        mfa::{self, TotpSetup},
+    },
     users::UserService,
     util::password::validate_password,
 };
@@ -41,5 +49,23 @@ impl AuthService {
 
     pub fn validate_token(&self, token: &str) -> Result<Claims, AuthError> {
         self.jwt_service.validate(token)
+    }
+
+    pub async fn setup_mfa(&self, user_id: Uuid) -> Result<TotpSetup, AuthError> {
+        let user = self
+            .user_service
+            .get_user_by_id(user_id)
+            .await
+            .map_err(|e| AuthError::InternalError(String::from("No se encontro el usuario")))?;
+
+        if user.token.is_some() {
+            return Err(AuthError::MfaAlreadySet);
+        }
+
+        let totp = mfa::generate_otp(&user.email)?;
+
+        self.user_service.
+
+        Ok(totp)
     }
 }
