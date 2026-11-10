@@ -61,6 +61,54 @@ export type ListResponse<T> = {
   items: T[]
 }
 
+export type DeliveryStatus = 'submitted' | 'replaced' | 'graded'
+
+export type Evaluacion = {
+  score: number
+  feedback: string | null
+  graded_at: string
+  updated_at: string
+}
+
+export type Entrega = {
+  id: string
+  activity_id: string
+  student: {
+    id: string
+    name: string
+    email: string
+  }
+  status: DeliveryStatus
+  version: number
+  submitted_at: string
+  updated_at: string
+  evaluation: Evaluacion | null
+}
+
+export type EntregaPropia = {
+  delivery: Entrega | null
+}
+
+export type EntregasRecibidas = {
+  items: Entrega[]
+  total: number
+}
+
+export type CalificacionInput = {
+  score: number
+  feedback?: string | null
+  expected_version: number
+}
+
+export type MfaSetup = {
+  secret: string
+  url: string
+}
+
+export type MfaChallenge = {
+  verified: boolean
+}
+
 export type ApiError = {
   code: string
   message: string

@@ -12,6 +12,7 @@ import ActivityCreateView from './views/StudentCourses/ActivityCreateView'
 import ActivityDetailView from './views/StudentCourses/ActivityDetailView'
 import ActivityEditView from './views/StudentCourses/ActivityEditView'
 import ChangePasswordView from './views/Account/ChangePasswordView'
+import MfaSetupView from './views/Account/MfaSetupView'
 import DashboardView from './views/DashboardView'
 import { AuthProvider } from './auth/AuthProvider'
 import ProtectedRoute from './auth/ProtectedRoute'
@@ -19,6 +20,9 @@ import PublicOnlyRoute from './auth/PublicOnlyRoute'
 import AuthenticatedLayout from './layouts/AuthenticatedLayout'
 import AdminUsersView from './views/AdminUsers/AdminUsersView'
 import EditUserView from './views/AdminUsers/EditUserView'
+import DeliveryFormView from './views/StudentCourses/DeliveryFormView'
+import DeliveryStatusView from './views/StudentCourses/DeliveryStatusView'
+import DeliveryGradingView from './views/StudentCourses/DeliveryGradingView'
 
 export default function Router() {
   return (
@@ -70,6 +74,7 @@ export default function Router() {
               path="/account/change-password"
               element={<ChangePasswordView />}
             />
+            <Route path="/account/mfa" element={<MfaSetupView />} />
             <Route
               path="/change-password"
               element={<ChangePasswordView />}
@@ -89,6 +94,30 @@ export default function Router() {
             <Route
               path="/activities/:activityId"
               element={<ActivityDetailView />}
+            />
+            <Route
+              path="/activities/:activityId/delivery"
+              element={
+                <ProtectedRoute allowedRoles={['Student']}>
+                  <DeliveryFormView />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/activities/:activityId/delivery/status"
+              element={
+                <ProtectedRoute allowedRoles={['Student']}>
+                  <DeliveryStatusView />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/activities/:activityId/deliveries/:deliveryId/evaluation"
+              element={
+                <ProtectedRoute allowedRoles={['Teacher']}>
+                  <DeliveryGradingView />
+                </ProtectedRoute>
+              }
             />
             <Route
               path="/courses/:courseId/activities/new"
