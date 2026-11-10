@@ -95,12 +95,12 @@ describe('ActivityCreateView', () => {
     })
     renderActivityView('/courses/course-1/activities/new')
 
-    await user.type(await screen.findByLabelText('Título'), 'Taller inicial')
+    await user.type(await screen.findByLabelText('Título (obligatorio)'), 'Taller inicial')
     await user.type(
-      screen.getByLabelText('Descripción'),
+      screen.getByLabelText('Descripción (obligatoria)'),
       'Resolver el taller.',
     )
-    fireEvent.change(screen.getByLabelText('Fecha y hora límite (Bogotá)'), {
+    fireEvent.change(screen.getByLabelText('Fecha y hora límite (obligatoria)'), {
       target: { value: '2099-11-30T23:59' },
     })
     await user.click(screen.getByRole('button', { name: 'Crear actividad' }))
@@ -127,7 +127,7 @@ describe('ActivityCreateView', () => {
         'Solo el docente responsable puede crear actividades en este curso.',
       ),
     ).toBeInTheDocument()
-    expect(screen.queryByLabelText('Título')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Título (obligatorio)')).not.toBeInTheDocument()
     expect(apiMock.post).not.toHaveBeenCalled()
   })
 })
@@ -149,8 +149,8 @@ describe('ActivityEditView', () => {
     })
     renderActivityView('/activities/activity-1/edit')
 
-    const title = await screen.findByLabelText('Título')
-    expect(screen.getByLabelText('Fecha y hora límite (Bogotá)')).toHaveValue(
+    const title = await screen.findByLabelText('Título (obligatorio)')
+    expect(screen.getByLabelText('Fecha y hora límite (obligatoria)')).toHaveValue(
       '2099-11-30T23:59',
     )
     await user.clear(title)
