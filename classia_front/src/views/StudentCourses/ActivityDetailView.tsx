@@ -81,7 +81,7 @@ export default function ActivityDetailView() {
       >
         Volver al curso
       </Link>
-      <article className="mt-5 rounded-2xl border-l-4 border-dorado bg-crema/40 p-6 shadow-sm sm:p-8">
+      <article className="mt-5 rounded-2xl border-l-4 border-dorado bg-white p-6 shadow-sm sm:p-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <h1 className="text-3xl font-bold text-verde-oscuro">
             {activity.title}

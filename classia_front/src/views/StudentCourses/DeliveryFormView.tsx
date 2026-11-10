@@ -147,7 +147,7 @@ export default function DeliveryFormView() {
         Volver a la actividad
       </Link>
 
-      <article className="mt-5 rounded-2xl border-l-4 border-dorado bg-crema/40 p-6 shadow-sm sm:p-8">
+      <article className="mt-5 rounded-2xl border-l-4 border-dorado bg-white p-6 shadow-sm sm:p-8">
         <h1 className="text-3xl font-bold text-verde-oscuro">
           {isReplacing ? 'Reemplazar entrega' : 'Entregar actividad'}
         </h1>
@@ -168,7 +168,7 @@ export default function DeliveryFormView() {
 
       <section className="mt-6 rounded-2xl bg-white p-6 shadow-sm sm:p-8">
         {delivery && (
-          <div className="mb-6 rounded-xl bg-crema/60 p-4">
+          <div className="mb-6 rounded-xl bg-crema p-4">
             <p className="font-semibold text-verde-oscuro">
               Entrega actual: {deliveryStatusLabel(delivery.status)}
             </p>
