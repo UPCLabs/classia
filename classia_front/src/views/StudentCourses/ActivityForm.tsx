@@ -1,6 +1,7 @@
 import { useForm } from 'react-hook-form'
 import {
   bogotaDateTimeToUtc,
+  isBogotaDateTimeInFuture,
   utcToBogotaDateTime,
 } from '../../api/activities'
 import type { Activity, ActivityCreate } from '../../types/api'
@@ -138,8 +139,7 @@ export default function ActivityForm({
             {...register('due_at', {
               required: 'La fecha límite es obligatoria',
               validate: (value) =>
-                (Boolean(value) &&
-                  new Date(bogotaDateTimeToUtc(value)).getTime() > Date.now()) ||
+                (Boolean(value) && isBogotaDateTimeInFuture(value)) ||
                 'La fecha límite debe ser futura',
             })}
           />
