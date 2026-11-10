@@ -1,10 +1,21 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { getActivity, isActivityDue } from '../../api/activities'
-import { getMyDelivery } from '../../api/deliveries'
+import {
+  downloadDeliveryFile,
+  getMyDelivery,
+  listReceivedDeliveries,
+} from '../../api/deliveries'
 import { useAuth } from '../../auth/context'
 import getErrorMessage from '../../auth/getErrorMessage'
-import { deliveryStatusLabel } from './deliveryPresentation'
+import { saveBlob } from '../../shared/downloadBlob'
+import type { Entrega } from '../../types/api'
+import {
+  deliveryStatusLabel,
+  formatDeliveryDate,
+  formatScore,
+} from './deliveryPresentation'
 
 const bogotaDateFormatter = new Intl.DateTimeFormat('es-CO', {
   dateStyle: 'long',
@@ -15,6 +26,9 @@ const bogotaDateFormatter = new Intl.DateTimeFormat('es-CO', {
 export default function ActivityDetailView() {
   const { activityId } = useParams()
   const { user } = useAuth()
+  const location = useLocation()
+  const locationState = location.state as { message?: string } | null
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const activityQuery = useQuery({
     queryKey: ['activity', activityId],
     enabled: Boolean(activityId),
@@ -36,6 +50,29 @@ export default function ActivityDetailView() {
       return getMyDelivery(activityId)
     },
   })
+
+  const isTeacher = user?.role === 'Teacher'
+  const deliveriesQuery = useQuery({
+    queryKey: ['deliveries', activityId],
+    enabled:
+      isTeacher &&
+      Boolean(activityId) &&
+      activityQuery.data?.status === 'published',
+    queryFn: () => {
+      if (!activityId) throw new Error('La actividad no es válida.')
+      return listReceivedDeliveries(activityId)
+    },
+  })
+
+  async function handleDownload(delivery: Entrega) {
+    setDownloadError(null)
+    try {
+      const blob = await downloadDeliveryFile(delivery.id)
+      saveBlob(blob, `entrega-${delivery.id}.docx`)
+    } catch (error) {
+      setDownloadError(getErrorMessage(error))
+    }
+  }
 
   if (activityQuery.isLoading) {
     return <p className="p-10 text-center" role="status">Cargando actividad...</p>
@@ -81,6 +118,11 @@ export default function ActivityDetailView() {
       >
         Volver al curso
       </Link>
+      {locationState?.message && (
+        <p className="mt-4 rounded-lg bg-crema p-4 text-verde-oscuro" role="status">
+          {locationState.message}
+        </p>
+      )}
       <article className="mt-5 rounded-2xl border-l-4 border-dorado bg-white p-6 shadow-sm sm:p-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <h1 className="text-3xl font-bold text-verde-oscuro">
@@ -146,6 +188,102 @@ export default function ActivityDetailView() {
                 )}
               </div>
             </>
+          )}
+        </section>
+      )}
+
+      {isTeacher && activity.status === 'published' && (
+        <section
+          aria-labelledby="teacher-deliveries-heading"
+          className="mt-6 rounded-2xl bg-white p-6 shadow-sm sm:p-8"
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2
+              className="text-2xl font-bold text-verde-oscuro"
+              id="teacher-deliveries-heading"
+            >
+              Entregas recibidas
+            </h2>
+            {deliveriesQuery.data && (
+              <p className="text-sm font-semibold text-verde-oscuro/70">
+                {deliveriesQuery.data.total}{' '}
+                {deliveriesQuery.data.total === 1 ? 'entrega' : 'entregas'}
+              </p>
+            )}
+          </div>
+
+          {deliveriesQuery.isLoading ? (
+            <p className="mt-3" role="status">Cargando entregas...</p>
+          ) : deliveriesQuery.error ? (
+            <p className="mt-3 rounded-lg bg-crema p-4 text-verde-oscuro" role="alert">
+              {getErrorMessage(deliveriesQuery.error)}
+            </p>
+          ) : (deliveriesQuery.data?.items ?? []).length === 0 ? (
+            <p className="mt-3 rounded-xl bg-crema/60 p-5 text-center text-verde-oscuro/80">
+              Aún no hay entregas para esta actividad
+            </p>
+          ) : (
+            <ul className="mt-4 grid gap-3">
+              {deliveriesQuery.data?.items.map((delivery) => (
+                <li
+                  className="rounded-xl border border-verde-medio/25 p-4"
+                  key={delivery.id}
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-verde-oscuro">
+                        {delivery.student.name}
+                      </p>
+                      <p className="text-sm text-verde-oscuro/70">
+                        {delivery.student.email}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-crema px-3 py-1 text-sm font-semibold text-verde-oscuro">
+                      {deliveryStatusLabel(delivery.status)}
+                    </span>
+                  </div>
+
+                  <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                    <div>
+                      <dt className="text-verde-oscuro/65">Fecha de registro</dt>
+                      <dd className="font-semibold text-verde-oscuro">
+                        {formatDeliveryDate(delivery.updated_at)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-verde-oscuro/65">Nota</dt>
+                      <dd className="font-semibold text-verde-oscuro">
+                        {delivery.evaluation
+                          ? `${formatScore(delivery.evaluation.score)} / 5.0`
+                          : 'Sin calificar'}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <button
+                      className="rounded-lg bg-crema px-4 py-2 font-semibold text-verde-oscuro"
+                      onClick={() => void handleDownload(delivery)}
+                      type="button"
+                    >
+                      Descargar
+                    </button>
+                    <Link
+                      className="rounded-lg bg-dorado px-4 py-2 font-semibold text-verde-oscuro"
+                      to={`/activities/${activityId}/deliveries/${delivery.id}/evaluation`}
+                    >
+                      {delivery.evaluation ? 'Corregir calificación' : 'Calificar'}
+                    </Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {downloadError && (
+            <p className="mt-3 rounded-lg bg-crema p-4 text-verde-oscuro" role="alert">
+              {downloadError}
+            </p>
           )}
         </section>
       )}

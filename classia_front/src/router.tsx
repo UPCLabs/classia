@@ -21,6 +21,7 @@ import AdminUsersView from './views/AdminUsers/AdminUsersView'
 import EditUserView from './views/AdminUsers/EditUserView'
 import DeliveryFormView from './views/StudentCourses/DeliveryFormView'
 import DeliveryStatusView from './views/StudentCourses/DeliveryStatusView'
+import DeliveryGradingView from './views/StudentCourses/DeliveryGradingView'
 
 export default function Router() {
   return (
@@ -105,6 +106,14 @@ export default function Router() {
               element={
                 <ProtectedRoute allowedRoles={['Student']}>
                   <DeliveryStatusView />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/activities/:activityId/deliveries/:deliveryId/evaluation"
+              element={
+                <ProtectedRoute allowedRoles={['Teacher']}>
+                  <DeliveryGradingView />
                 </ProtectedRoute>
               }
             />
