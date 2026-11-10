@@ -65,3 +65,11 @@ export function utcToBogotaDateTime(value: string): string {
 
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`
 }
+
+/** `value` llega como fecha y hora de Bogotá en formato `datetime-local`. */
+export function isBogotaDateTimeInFuture(
+  value: string,
+  now: number = Date.now(),
+): boolean {
+  return new Date(bogotaDateTimeToUtc(value)).getTime() > now
+}
