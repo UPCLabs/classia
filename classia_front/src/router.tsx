@@ -19,6 +19,8 @@ import PublicOnlyRoute from './auth/PublicOnlyRoute'
 import AuthenticatedLayout from './layouts/AuthenticatedLayout'
 import AdminUsersView from './views/AdminUsers/AdminUsersView'
 import EditUserView from './views/AdminUsers/EditUserView'
+import DeliveryFormView from './views/StudentCourses/DeliveryFormView'
+import DeliveryStatusView from './views/StudentCourses/DeliveryStatusView'
 
 export default function Router() {
   return (
@@ -89,6 +91,22 @@ export default function Router() {
             <Route
               path="/activities/:activityId"
               element={<ActivityDetailView />}
+            />
+            <Route
+              path="/activities/:activityId/delivery"
+              element={
+                <ProtectedRoute allowedRoles={['Student']}>
+                  <DeliveryFormView />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/activities/:activityId/delivery/status"
+              element={
+                <ProtectedRoute allowedRoles={['Student']}>
+                  <DeliveryStatusView />
+                </ProtectedRoute>
+              }
             />
             <Route
               path="/courses/:courseId/activities/new"

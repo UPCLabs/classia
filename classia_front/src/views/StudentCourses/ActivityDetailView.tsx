@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router-dom'
-import { getActivity } from '../../api/activities'
+import { getActivity, isActivityDue } from '../../api/activities'
+import { getMyDelivery } from '../../api/deliveries'
 import { useAuth } from '../../auth/context'
 import getErrorMessage from '../../auth/getErrorMessage'
+import { deliveryStatusLabel } from './deliveryPresentation'
 
 const bogotaDateFormatter = new Intl.DateTimeFormat('es-CO', {
   dateStyle: 'long',
@@ -19,6 +21,19 @@ export default function ActivityDetailView() {
     queryFn: () => {
       if (!activityId) throw new Error('La actividad no es válida.')
       return getActivity(activityId)
+    },
+  })
+
+  const isStudent = user?.role === 'Student'
+  const deliveryQuery = useQuery({
+    queryKey: ['delivery', activityId],
+    enabled:
+      isStudent &&
+      Boolean(activityId) &&
+      activityQuery.data?.status === 'published',
+    queryFn: () => {
+      if (!activityId) throw new Error('La actividad no es válida.')
+      return getMyDelivery(activityId)
     },
   })
 
@@ -66,7 +81,7 @@ export default function ActivityDetailView() {
       >
         Volver al curso
       </Link>
-      <article className="mt-5 rounded-2xl border-l-4 border-dorado bg-crema/40 p-6 shadow-sm sm:p-8">
+      <article className="mt-5 rounded-2xl border-l-4 border-dorado bg-white p-6 shadow-sm sm:p-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <h1 className="text-3xl font-bold text-verde-oscuro">
             {activity.title}
@@ -87,6 +102,53 @@ export default function ActivityDetailView() {
           </dd>
         </dl>
       </article>
+
+      {isStudent && activity.status === 'published' && (
+        <section
+          aria-labelledby="student-delivery-heading"
+          className="mt-6 rounded-2xl bg-white p-6 shadow-sm sm:p-8"
+        >
+          <h2
+            className="text-2xl font-bold text-verde-oscuro"
+            id="student-delivery-heading"
+          >
+            Tu entrega
+          </h2>
+
+          {deliveryQuery.isLoading ? (
+            <p className="mt-3" role="status">Cargando entrega...</p>
+          ) : deliveryQuery.error ? (
+            <p className="mt-3 rounded-lg bg-crema p-4 text-verde-oscuro" role="alert">
+              {getErrorMessage(deliveryQuery.error)}
+            </p>
+          ) : (
+            <>
+              <p className="mt-3 text-verde-oscuro/80">
+                Estado:{' '}
+                <span className="font-semibold text-verde-oscuro">
+                  {deliveryStatusLabel(deliveryQuery.data?.status ?? null)}
+                </span>
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link
+                  className="rounded-lg bg-crema px-5 py-2 font-semibold text-verde-oscuro"
+                  to={`/activities/${activityId}/delivery/status`}
+                >
+                  Ver estado de mi entrega
+                </Link>
+                {!isActivityDue(activity.due_at) && (
+                  <Link
+                    className="rounded-lg bg-dorado px-5 py-2 font-semibold text-verde-oscuro"
+                    to={`/activities/${activityId}/delivery`}
+                  >
+                    {deliveryQuery.data ? 'Reemplazar entrega' : 'Subir entrega'}
+                  </Link>
+                )}
+              </div>
+            </>
+          )}
+        </section>
+      )}
     </main>
   )
 }

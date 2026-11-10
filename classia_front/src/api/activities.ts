@@ -73,3 +73,11 @@ export function isBogotaDateTimeInFuture(
 ): boolean {
   return new Date(bogotaDateTimeToUtc(value)).getTime() > now
 }
+
+/** `dueAt` es una fecha ISO 8601 en UTC, como la devuelve la API. */
+export function isActivityDue(
+  dueAt: string,
+  now: number = Date.now(),
+): boolean {
+  return new Date(dueAt).getTime() <= now
+}
