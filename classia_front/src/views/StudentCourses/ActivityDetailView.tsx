@@ -219,7 +219,7 @@ export default function ActivityDetailView() {
               {getErrorMessage(deliveriesQuery.error)}
             </p>
           ) : (deliveriesQuery.data?.items ?? []).length === 0 ? (
-            <p className="mt-3 rounded-xl bg-crema/60 p-5 text-center text-verde-oscuro/80">
+            <p className="mt-3 rounded-xl bg-crema p-5 text-center text-verde-oscuro/80">
               Aún no hay entregas para esta actividad
             </p>
           ) : (

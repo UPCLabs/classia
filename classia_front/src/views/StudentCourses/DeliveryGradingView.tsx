@@ -161,7 +161,7 @@ export default function DeliveryGradingView() {
           {activity.title}
         </h1>
 
-        <div className="mt-5 rounded-xl bg-crema/60 p-4">
+        <div className="mt-5 rounded-xl bg-crema p-4">
           <p className="font-semibold text-verde-oscuro">
             {delivery.student.name}
           </p>
