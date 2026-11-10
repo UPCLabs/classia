@@ -12,6 +12,7 @@ import ActivityCreateView from './views/StudentCourses/ActivityCreateView'
 import ActivityDetailView from './views/StudentCourses/ActivityDetailView'
 import ActivityEditView from './views/StudentCourses/ActivityEditView'
 import ChangePasswordView from './views/Account/ChangePasswordView'
+import MfaSetupView from './views/Account/MfaSetupView'
 import DashboardView from './views/DashboardView'
 import { AuthProvider } from './auth/AuthProvider'
 import ProtectedRoute from './auth/ProtectedRoute'
@@ -73,6 +74,7 @@ export default function Router() {
               path="/account/change-password"
               element={<ChangePasswordView />}
             />
+            <Route path="/account/mfa" element={<MfaSetupView />} />
             <Route
               path="/change-password"
               element={<ChangePasswordView />}

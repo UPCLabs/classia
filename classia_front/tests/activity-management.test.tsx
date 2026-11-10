@@ -61,6 +61,7 @@ function renderActivityView(initialPath: string, teacherId = 'teacher-1') {
           isLoading: false,
           error: null,
           signIn: vi.fn(),
+          completeMfaSignIn: vi.fn(),
           signOut: vi.fn(),
         }}
       >

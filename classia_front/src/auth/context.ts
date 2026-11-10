@@ -1,11 +1,14 @@
 import { createContext, useContext } from 'react'
 import type { AuthUser } from '../types/api'
 
+export type SignInResult = 'authenticated' | 'mfa'
+
 export type AuthContextValue = {
   user: AuthUser | null
   isLoading: boolean
   error: string | null
-  signIn: (email: string, password: string) => Promise<void>
+  signIn: (email: string, password: string) => Promise<SignInResult>
+  completeMfaSignIn: (code: string) => Promise<void>
   signOut: () => Promise<void>
 }
 

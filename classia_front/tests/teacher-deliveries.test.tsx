@@ -61,6 +61,7 @@ function renderActivity() {
           isLoading: false,
           error: null,
           signIn: vi.fn(),
+          completeMfaSignIn: vi.fn(),
           signOut: vi.fn(),
         }}
       >
