@@ -10,7 +10,7 @@ use crate::{
         jwt::JwtService,
         mfa::{self, TotpSetup},
     },
-    users::UserService,
+    users::{User, UserService},
     util::password::validate_password,
 };
 
@@ -25,6 +25,13 @@ impl AuthService {
             jwt_service,
             user_service,
         }
+    }
+
+    async fn get_user(&self, user_id: Uuid) -> Result<User, AuthError> {
+        self.user_service
+            .get_user_by_id(user_id)
+            .await
+            .map_err(|_| AuthError::InternalError(String::from("No se encontro el usuario")))
     }
 
     pub async fn login(&self, login: LoginRequest) -> Result<String, AuthError> {
@@ -52,20 +59,31 @@ impl AuthService {
     }
 
     pub async fn setup_mfa(&self, user_id: Uuid) -> Result<TotpSetup, AuthError> {
-        let user = self
-            .user_service
-            .get_user_by_id(user_id)
-            .await
-            .map_err(|e| AuthError::InternalError(String::from("No se encontro el usuario")))?;
+        let user = self.get_user(user_id).await?;
 
         if user.token.is_some() {
-            return Err(AuthError::MfaAlreadySet);
+            return Err(AuthError::InvalidParamater(String::from(
+                "Mfa is already set",
+            )));
         }
 
         let totp = mfa::generate_otp(&user.email)?;
 
-        self.user_service.
+        self.user_service
+            .update_mfa(user_id, &totp.totp)
+            .await
+            .map_err(|_| AuthError::InternalError("Can't update".to_string()))?;
 
         Ok(totp)
+    }
+
+    pub async fn challenge_mfa(&self, user_id: Uuid, challenge: &str) -> Result<bool, AuthError> {
+        let user = self.get_user(user_id).await?;
+
+        let Some(totp) = user.token else {
+            return Err(AuthError::InvalidParamater(String::from("MFA is not set")));
+        };
+
+        Ok(mfa::validate_otp(&totp, challenge))
     }
 }

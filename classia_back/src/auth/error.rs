@@ -8,7 +8,7 @@ pub enum AuthError {
     InternalError(String),
     InvalidCredentials,
     InactiveUser,
-    MfaAlreadySet,
+    InvalidParamater(String),
 }
 
 impl From<AuthError> for AppError {
@@ -45,10 +45,10 @@ impl From<AuthError> for AppError {
                 code: StatusCode::BAD_REQUEST.as_str(),
                 message: "Usuario no disponible".to_string(),
             },
-            AuthError::MfaAlreadySet => AppError {
+            AuthError::InvalidParamater(reason) => AppError {
                 status: StatusCode::BAD_REQUEST,
                 code: StatusCode::BAD_REQUEST.as_str(),
-                message: "Mfa ya esta configurado".to_string(),
+                message: reason,
             },
         }
     }

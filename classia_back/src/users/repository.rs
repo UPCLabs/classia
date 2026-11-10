@@ -130,6 +130,16 @@ impl UserRepository {
         Ok(())
     }
 
+    pub async fn update_mfa(&self, id_user: Uuid, token: &str) -> Result<(), sqlx::Error> {
+        sqlx::query("UPDATE users SET token = $1, update_at = now() WHERE id = $2")
+            .bind(token)
+            .bind(id_user)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn update_user(
         &self,
         id_user: Uuid,

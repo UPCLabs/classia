@@ -6,10 +6,11 @@ use axum::{
     routing::{get, post},
 };
 use reqwest::header::SET_COOKIE;
+use serde_json::{Value, json};
 
 use crate::{
     auth::{
-        dto::{IdentityResponse, LoginRequest},
+        dto::{IdentityResponse, LoginRequest, TotpChallenge, TotpResponse},
         extractor::AuthenticatedUser,
     },
     error::AppError,
@@ -21,6 +22,8 @@ pub fn route() -> Router<ClassiaState> {
         .route("/me", get(me))
         .route("/login", post(login))
         .route("/logout", post(logout))
+        .route("/setup-mfa", post(setup_mfa))
+        .route("/challenge-mfa", post(challenge_mfa))
 }
 
 async fn me(
@@ -61,4 +64,31 @@ async fn logout() -> Result<impl IntoResponse, AppError> {
     );
 
     Ok(([(SET_COOKIE, cookie)], StatusCode::NO_CONTENT))
+}
+
+async fn setup_mfa(
+    user: AuthenticatedUser,
+    State(state): State<ClassiaState>,
+) -> Result<Json<TotpResponse>, AppError> {
+    let totp = state.auth_service.setup_mfa(user.id).await?;
+
+    Ok(Json(TotpResponse {
+        secret: totp.totp,
+        url: totp.url,
+    }))
+}
+
+async fn challenge_mfa(
+    user: AuthenticatedUser,
+    State(state): State<ClassiaState>,
+    Json(request): Json<TotpChallenge>,
+) -> Result<Json<Value>, AppError> {
+    let status = state
+        .auth_service
+        .challenge_mfa(user.id, &request.code)
+        .await?;
+
+    Ok(Json(json!({
+        "verified": status
+    })))
 }

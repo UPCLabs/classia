@@ -17,7 +17,7 @@ CREATE TABLE users (
     password TEXT NOT NULL,
     role user_role NOT NULL,
     status VARCHAR(50) NOT NULL,
-    token TEXT NOT NULL,
+    token TEXT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
