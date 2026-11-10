@@ -235,3 +235,63 @@ async fn gets_activity_detail_according_to_course_role(pool: PgPool) {
         Err(ActivityError::Forbidden)
     ));
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn publishes_activity_successfully_and_validates_due_date(pool: PgPool) {
+    let teacher_id = insert_user(&pool, "teacher_pub@example.com", "teacher").await;
+    let course_id = insert_course(&pool, teacher_id).await;
+    let service = service(&pool);
+
+    let valid_draft_id = insert_activity(
+        &pool,
+        course_id,
+        "Valid Draft",
+        Utc::now() + Duration::days(1),
+        "draft",
+    )
+    .await;
+
+    let result = service
+        .publish(teacher_id, &UserRole::Teacher, valid_draft_id)
+        .await;
+    assert!(
+        result.is_ok(),
+        "The activity should be published successfully"
+    );
+    assert_eq!(result.unwrap().status, ActivityStatus::Published);
+
+    let expired_draft_id = insert_activity(
+        &pool,
+        course_id,
+        "Expired Draft",
+        Utc::now() - Duration::days(1),
+        "draft",
+    )
+    .await;
+
+    let result_expired = service
+        .publish(teacher_id, &UserRole::Teacher, expired_draft_id)
+        .await;
+
+    assert!(
+        result_expired.is_err(),
+        "Should not publish if the due date has already passed"
+    );
+
+    let published_id = insert_activity(
+        &pool,
+        course_id,
+        "Already Published",
+        Utc::now() + Duration::days(1),
+        "published",
+    )
+    .await;
+
+    let result_already_pub = service
+        .publish(teacher_id, &UserRole::Teacher, published_id)
+        .await;
+    assert!(matches!(
+        result_already_pub,
+        Err(ActivityError::AlreadyPublished)
+    ));
+}

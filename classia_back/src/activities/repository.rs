@@ -37,7 +37,9 @@ impl ActivityRepository {
              SET status = 'published',
                  published_at = CURRENT_TIMESTAMP,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = $1 AND status = 'draft'
+             WHERE id = $1 
+               AND status = 'draft'
+               AND due_at > CURRENT_TIMESTAMP
              RETURNING *",
         )
         .bind(activity_id)
