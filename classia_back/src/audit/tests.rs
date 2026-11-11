@@ -40,9 +40,13 @@ async fn count_events(pool: &PgPool) -> i64 {
 fn audit_identifiers_match_the_sds_vocabulary() {
     assert_eq!(AuditTarget::Delivery.as_str(), "delivery");
     assert_eq!(AuditTarget::Evaluation.as_str(), "evaluation");
+    assert_eq!(AuditTarget::User.as_str(), "user");
     assert_eq!(AuditAction::SubmitDelivery.as_str(), "submit_delivery");
     assert_eq!(AuditAction::ReplaceDelivery.as_str(), "replace_delivery");
     assert_eq!(AuditAction::GradeDelivery.as_str(), "grade_delivery");
+    assert_eq!(AuditAction::MfaSetupStarted.as_str(), "mfa.setup_started");
+    assert_eq!(AuditAction::MfaActivated.as_str(), "mfa.activated");
+    assert_eq!(AuditAction::MfaChallenge.as_str(), "mfa.challenge");
 }
 
 #[sqlx::test(migrations = "./migrations")]

@@ -28,6 +28,9 @@ pub struct JwtSettings {
     pub secret: String,
     pub issuer: String,
     pub expiration: i64,
+    /// AES-256 key for TOTP secrets (64 hex characters). Without it, MFA
+    /// setup and verification fail instead of storing secrets in clear text.
+    pub mfa_encryption_key: Option<String>,
 }
 
 pub async fn connect_database(database_url: &str) -> Result<PgPool, Box<dyn Error>> {
@@ -47,7 +50,10 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
         user_service.clone(),
         course_service.clone(),
     ));
-    let activity_service = Arc::new(activities::build_service(pool, course_service.clone()));
+    let activity_service = Arc::new(activities::build_service(
+        pool.clone(),
+        course_service.clone(),
+    ));
     let auth_service = Arc::new(
         auth::build_service(
             JwtConfig {
@@ -56,6 +62,8 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
                 expiration: jwt.expiration,
             },
             user_service.clone(),
+            pool,
+            jwt.mfa_encryption_key.as_deref(),
         )
         .map_err(|error| io::Error::other(format!("{error:?}")))?,
     );

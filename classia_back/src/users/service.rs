@@ -129,13 +129,6 @@ impl UserService {
             .map_err(UserError::Database)
     }
 
-    pub async fn update_mfa(&self, id_user: Uuid, mfa_totp: &str) -> Result<(), UserError> {
-        self.user_repository
-            .update_mfa(id_user, mfa_totp)
-            .await
-            .map_err(UserError::Database)
-    }
-
     pub async fn update_user(
         &self,
         id_user: Uuid,

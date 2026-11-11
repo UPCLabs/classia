@@ -15,6 +15,7 @@ use tower::ServiceExt;
 use uuid::Uuid;
 
 const JWT_SECRET: &str = "0123456789abcdef0123456789abcdef";
+const MFA_KEY: &str = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
 
 fn app(pool: PgPool) -> Router {
     build_router(
@@ -23,6 +24,7 @@ fn app(pool: PgPool) -> Router {
             secret: JWT_SECRET.to_string(),
             issuer: "classia".to_string(),
             expiration: 3600,
+            mfa_encryption_key: Some(MFA_KEY.to_string()),
         },
     )
     .expect("test router builds")

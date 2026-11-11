@@ -2,7 +2,10 @@ use chrono::Utc;
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
 
 use crate::{
-    auth::{claims::Claims, error::AuthError},
+    auth::{
+        claims::{Claims, TokenPurpose},
+        error::AuthError,
+    },
     users::User,
 };
 
@@ -36,14 +39,24 @@ impl JwtService {
     }
 
     pub fn generate(&self, user: &User) -> Result<String, AuthError> {
+        self.generate_for(user, TokenPurpose::Access, self.expiration_secs)
+    }
+
+    pub fn generate_for(
+        &self,
+        user: &User,
+        purpose: TokenPurpose,
+        expiration_secs: i64,
+    ) -> Result<String, AuthError> {
         let issued_at = Utc::now().timestamp();
 
         let claims = Claims {
             sub: user.id,
             role: user.role.clone(),
             iat: issued_at,
-            exp: issued_at + self.expiration_secs,
+            exp: issued_at + expiration_secs,
             iss: self.issuer.clone(),
+            purpose,
         };
 
         encode(&Header::new(Algorithm::HS256), &claims, &self.encoding_key)
@@ -56,6 +69,7 @@ impl JwtService {
         validation.set_issuer(&[self.issuer.as_str()]);
         validation.set_required_spec_claims(&["sub", "iat", "exp", "iss"]);
         validation.validate_exp = true;
+        validation.leeway = 0;
 
         decode::<Claims>(token, &self.decoding_key, &validation)
             .map(|data| data.claims)

@@ -13,6 +13,7 @@ pub enum AuditResult {
 pub enum AuditTarget {
     Delivery,
     Evaluation,
+    User,
 }
 
 impl AuditTarget {
@@ -20,6 +21,7 @@ impl AuditTarget {
         match self {
             Self::Delivery => "delivery",
             Self::Evaluation => "evaluation",
+            Self::User => "user",
         }
     }
 }
@@ -33,6 +35,9 @@ pub enum AuditAction {
     SubmitDelivery,
     ReplaceDelivery,
     GradeDelivery,
+    MfaSetupStarted,
+    MfaActivated,
+    MfaChallenge,
 }
 
 impl AuditAction {
@@ -41,6 +46,9 @@ impl AuditAction {
             Self::SubmitDelivery => "submit_delivery",
             Self::ReplaceDelivery => "replace_delivery",
             Self::GradeDelivery => "grade_delivery",
+            Self::MfaSetupStarted => "mfa.setup_started",
+            Self::MfaActivated => "mfa.activated",
+            Self::MfaChallenge => "mfa.challenge",
         }
     }
 }

@@ -1,0 +1,9 @@
+name: activate MFA or complete login
+method: POST
+url: '{{BASE_URL}}/auth/challenge-mfa'
+body:
+  type: json
+  content: |-
+    {
+      "code": "{{MFA_CODE}}"
+    }

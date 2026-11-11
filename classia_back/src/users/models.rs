@@ -35,7 +35,8 @@ pub struct User {
     pub password: String,
     pub role: UserRole,
     pub status: String,
-    pub token: Option<String>,
+    #[allow(unused)]
+    pub token: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
