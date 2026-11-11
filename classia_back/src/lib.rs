@@ -6,9 +6,19 @@ use sqlx::PgPool;
 use crate::{auth::JwtConfig, state::ClassiaState};
 
 mod activities;
+#[allow(
+    dead_code,
+    reason = "consumed by the deliveries services in DEV-12 to DEV-14"
+)]
+mod audit;
 mod auth;
 mod config;
 mod courses;
+#[allow(
+    dead_code,
+    reason = "consumed by the deliveries services in DEV-12 to DEV-14"
+)]
+mod deliveries;
 mod error;
 mod state;
 mod users;

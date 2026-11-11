@@ -92,7 +92,7 @@ function ActivityListItem({
   showStatus,
 }: ActivityListItemProps) {
   return (
-    <li className="rounded-xl border-l-4 border-dorado bg-crema/40 p-5">
+    <li className="rounded-xl border-l-4 border-dorado bg-white p-5">
       <Link
         className="block rounded-lg transition hover:text-verde-medio focus-visible:outline focus-visible:outline-2 focus-visible:outline-verde-medio"
         to={`/activities/${activity.id}`}
