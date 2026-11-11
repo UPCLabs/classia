@@ -1,0 +1,9 @@
+name: update activity
+method: PATCH
+url: '{{BASE_URL}}/activities/{{ACTIVITY_ID}}'
+body:
+  type: json
+  content: |-
+    {
+      "due_at": "2030-11-05T04:59:00Z"
+    }

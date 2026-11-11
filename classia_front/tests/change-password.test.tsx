@@ -26,6 +26,7 @@ function renderChangePassword() {
         isLoading: false,
         error: null,
         signIn: vi.fn(),
+        completeMfaSignIn: vi.fn(),
         signOut,
       }}
     >

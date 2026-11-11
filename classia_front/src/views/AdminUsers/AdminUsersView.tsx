@@ -2,10 +2,18 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useLocation } from 'react-router-dom'
 import httpClient from '../../api/httpClient'
+import { resetMfa } from '../../api/mfa'
+import { useAuth } from '../../auth/context'
 import getErrorMessage from '../../auth/getErrorMessage'
 import AsyncStateView from '../../shared/components/AsyncStateView'
 import { useAsyncState } from '../../shared/hooks/useAsyncState'
-import type { ListResponse, UserRole, UserStatus, Usuario } from '../../types/api'
+import type {
+  AuthUser,
+  ListResponse,
+  UserRole,
+  UserStatus,
+  Usuario,
+} from '../../types/api'
 
 type AdminUsersLocationState = {
   message?: string
@@ -13,10 +21,30 @@ type AdminUsersLocationState = {
 
 const userRoles: UserRole[] = ['SuperAdmin', 'Admin', 'Teacher', 'Student']
 
+function canResetMfa(currentUser: AuthUser | null, target: Usuario): boolean {
+  if (!currentUser || currentUser.id === target.id) {
+    return false
+  }
+
+  if (currentUser.role === 'SuperAdmin') {
+    return target.role === 'Admin'
+  }
+
+  if (currentUser.role === 'Admin') {
+    return target.role === 'Teacher' || target.role === 'Student'
+  }
+
+  return false
+}
+
 export default function AdminUsersView() {
+  const { user: currentUser } = useAuth()
   const [query, setQuery] = useState('')
   const [role, setRole] = useState<UserRole | ''>('')
   const [status, setStatus] = useState<UserStatus | ''>('')
+  const [mfaTarget, setMfaTarget] = useState<Usuario | null>(null)
+  const [mfaReason, setMfaReason] = useState('')
+  const [mfaMessage, setMfaMessage] = useState<string | null>(null)
   const queryClient = useQueryClient()
   const location = useLocation()
   const locationState = location.state as AdminUsersLocationState | null
@@ -45,6 +73,23 @@ export default function AdminUsersView() {
       return data
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+  })
+
+  const resetMfaMutation = useMutation({
+    mutationFn: ({
+      id,
+      reason,
+    }: {
+      id: string
+      reason: string
+      name: string
+    }) => resetMfa(id, reason),
+    onSuccess: (_, variables) => {
+      setMfaMessage(`Se restableció el MFA de ${variables.name}.`)
+      setMfaTarget(null)
+      setMfaReason('')
+      void queryClient.invalidateQueries({ queryKey: ['admin-users'] })
+    },
   })
 
   const usersState = useAsyncState({
@@ -78,6 +123,12 @@ export default function AdminUsersView() {
       {locationState?.message && (
         <p className="mt-6 rounded-lg border border-verde-medio bg-white p-4 text-verde-oscuro" role="status">
           {locationState.message}
+        </p>
+      )}
+
+      {mfaMessage && (
+        <p className="mt-6 rounded-lg border border-verde-medio bg-white p-4 text-verde-oscuro" role="status">
+          {mfaMessage}
         </p>
       )}
 
@@ -185,6 +236,19 @@ export default function AdminUsersView() {
                       >
                         {user.status === 'active' ? 'Desactivar' : 'Activar'}
                       </button>
+                      {canResetMfa(currentUser, user) && (
+                        <button
+                          className="font-semibold text-red-800 underline"
+                          onClick={() => {
+                            setMfaTarget(user)
+                            setMfaReason('')
+                            setMfaMessage(null)
+                          }}
+                          type="button"
+                        >
+                          Restablecer MFA
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -193,6 +257,77 @@ export default function AdminUsersView() {
           </table>
         </div>
       </AsyncStateView>
+
+      {mfaTarget && (
+        <section
+          aria-labelledby="reset-mfa-heading"
+          aria-modal="true"
+          className="mt-8 rounded-2xl border-2 border-red-800/30 bg-white p-6 shadow-sm"
+          role="dialog"
+        >
+          <h2
+            className="text-2xl font-bold text-verde-oscuro"
+            id="reset-mfa-heading"
+          >
+            Restablecer MFA
+          </h2>
+          <p className="mt-2 text-verde-oscuro/75">
+            Cuenta: <strong>{mfaTarget.name}</strong> ({mfaTarget.email})
+          </p>
+          <p className="mt-2 text-sm text-verde-oscuro/70">
+            Se revocará el secreto, se cerrarán las sesiones de la cuenta y
+            deberá configurar MFA de nuevo.
+          </p>
+
+          <div className="mt-4 grid gap-1">
+            <label className="font-medium" htmlFor="reset-mfa-reason">
+              Motivo (obligatorio)
+            </label>
+            <textarea
+              className="min-h-24 rounded-lg border border-verde-medio/30 bg-crema px-3 py-2"
+              id="reset-mfa-reason"
+              maxLength={500}
+              onChange={(event) => setMfaReason(event.target.value)}
+              value={mfaReason}
+            />
+          </div>
+
+          {resetMfaMutation.error && (
+            <p className="mt-3 rounded-lg bg-red-50 p-3 text-red-800" role="alert">
+              {getErrorMessage(resetMfaMutation.error)}
+            </p>
+          )}
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              className="rounded-lg bg-red-800 px-5 py-2 font-semibold text-white transition hover:brightness-110 disabled:opacity-60"
+              disabled={mfaReason.trim().length === 0 || resetMfaMutation.isPending}
+              onClick={() =>
+                resetMfaMutation.mutate({
+                  id: mfaTarget.id,
+                  reason: mfaReason.trim(),
+                  name: mfaTarget.name,
+                })
+              }
+              type="button"
+            >
+              {resetMfaMutation.isPending
+                ? 'Restableciendo...'
+                : 'Confirmar restablecimiento'}
+            </button>
+            <button
+              className="rounded-lg bg-crema px-5 py-2 font-semibold text-verde-oscuro"
+              onClick={() => {
+                setMfaTarget(null)
+                setMfaReason('')
+              }}
+              type="button"
+            >
+              Cancelar
+            </button>
+          </div>
+        </section>
+      )}
     </main>
   )
 }

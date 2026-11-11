@@ -1,0 +1,3 @@
+name: publish activity
+method: POST
+url: '{{BASE_URL}}/activities/{{ACTIVITY_ID}}/publish'

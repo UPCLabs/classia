@@ -1,12 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import httpClient from '../../api/httpClient'
 import { useAuth } from '../../auth/context'
 import getErrorMessage from '../../auth/getErrorMessage'
 import type { Curso } from '../../types/api'
+import ActivityList from './ActivityList'
 
 export default function CourseDetailView() {
   const { courseId } = useParams()
+  const location = useLocation()
   const { user } = useAuth()
   const courseQuery = useQuery({
     queryKey: ['course', courseId],
@@ -41,9 +43,15 @@ export default function CourseDetailView() {
     user?.role === 'Teacher' && user.id === course.teacher.id
   const canManageCourse =
     isCourseTeacher || user?.role === 'Admin' || user?.role === 'SuperAdmin'
+  const locationState = location.state as { message?: string } | null
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
+      {locationState?.message && (
+        <p className="mb-4 rounded-lg bg-crema p-4 text-verde-oscuro" role="status">
+          {locationState.message}
+        </p>
+      )}
       <Link className="text-verde-medio underline" to="/courses">
         Volver a cursos
       </Link>
@@ -78,22 +86,34 @@ export default function CourseDetailView() {
           </div>
         </dl>
 
-        {canManageCourse && (
-          <Link
-            className="inline-flex rounded-lg border border-verde-medio px-5 py-3 font-semibold text-verde-medio transition hover:bg-verde-medio/10"
-            to={`/courses/${course.id}/students`}
-          >
-            Participantes
-          </Link>
-        )}
-        {canManageCourse && (
-          <Link
-            className="mt-8 inline-flex rounded-lg bg-dorado px-5 py-3 font-semibold text-verde-oscuro transition hover:brightness-110"
-            to={`/courses/${course.id}/edit`}
-          >
-            Editar curso
-          </Link>
-        )}
+        <ActivityList canPublish={isCourseTeacher} courseId={course.id} />
+
+        <div className="mt-8 flex flex-wrap gap-4">
+          {canManageCourse && (
+            <Link
+              className="inline-flex rounded-lg border border-verde-medio px-5 py-3 font-semibold text-verde-medio transition hover:bg-verde-medio/10"
+              to={`/courses/${course.id}/students`}
+            >
+              Participantes
+            </Link>
+          )}
+          {isCourseTeacher && (
+            <Link
+              className="inline-flex rounded-lg bg-dorado px-5 py-3 font-semibold text-verde-oscuro transition hover:brightness-110"
+              to={`/courses/${course.id}/activities/new`}
+            >
+              Crear actividad
+            </Link>
+          )}
+          {canManageCourse && (
+            <Link
+              className="inline-flex rounded-lg bg-dorado px-5 py-3 font-semibold text-verde-oscuro transition hover:brightness-110"
+              to={`/courses/${course.id}/edit`}
+            >
+              Editar curso
+            </Link>
+          )}
+        </div>
       </section>
     </main>
   )

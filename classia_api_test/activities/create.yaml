@@ -1,0 +1,11 @@
+name: create activity
+method: POST
+url: '{{BASE_URL}}/courses/{{COURSE_ID}}/activities'
+body:
+  type: json
+  content: |-
+    {
+      "title": "Taller 1: modelo de dominio",
+      "description": "Elaborar el diagrama de clases del módulo de cursos.",
+      "due_at": "2030-11-03T04:59:00Z"
+    }
