@@ -47,7 +47,15 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
         user_service.clone(),
         course_service.clone(),
     ));
-    let activity_service = Arc::new(activities::build_service(pool, course_service.clone()));
+    let activity_service = Arc::new(activities::build_service(
+        pool.clone(),
+        course_service.clone(),
+    ));
+    let delivery_service = Arc::new(deliveries::build_service(
+        pool,
+        activity_service.clone(),
+        deliveries::files_dir_from_env(),
+    ));
     let auth_service = Arc::new(
         auth::build_service(
             JwtConfig {
@@ -65,6 +73,7 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
         course_service,
         enrollment_service,
         activity_service,
+        delivery_service,
         auth_service,
     );
 
@@ -74,6 +83,7 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
         .nest("/api/users", users::route())
         .nest("/api/courses", courses::route())
         .nest("/api/activities", activities::route())
+        .nest("/api/deliveries", deliveries::route())
         .with_state(state))
 }
 

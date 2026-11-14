@@ -13,6 +13,7 @@ use sqlx::PgPool;
 use std::sync::Arc;
 
 pub(crate) use api::route;
+pub(crate) use error::ActivityError;
 pub(crate) use service::ActivityService;
 
 pub(crate) fn build_service(pool: PgPool, course_service: Arc<CourseService>) -> ActivityService {
