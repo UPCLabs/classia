@@ -28,6 +28,8 @@ RUN apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates curl \
     && groupadd --system --gid 10001 classia \
     && useradd --system --uid 10001 --gid classia --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin classia \
+    && mkdir -p /var/lib/classia/deliveries \
+    && chown 10001:10001 /var/lib/classia/deliveries \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder --chown=10001:10001 /app/target/release/classia_back /usr/local/bin/classia-back

@@ -26,8 +26,7 @@ const COURSE_SELECT: &str = r#"
     LEFT JOIN course_enrollments enrollment ON enrollment.course_id = c.id
 "#;
 
-const USER_COLUMNS: &str =
-    "u.id, u.name, u.email, u.password, u.role, u.status, u.token, u.created_at, u.updated_at";
+const USER_COLUMNS: &str = "u.id, u.name, u.email, u.password, u.role, u.status, u.token, u.token_version, u.created_at, u.updated_at";
 
 pub enum EnrollOutcome {
     Enrolled(DateTime<Utc>),

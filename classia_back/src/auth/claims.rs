@@ -20,4 +20,6 @@ pub(crate) struct Claims {
     pub exp: i64,
     pub iss: String,
     pub purpose: TokenPurpose,
+    /// Must match `users.token_version`; an MFA reset increments it.
+    pub token_version: i64,
 }

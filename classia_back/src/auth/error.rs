@@ -14,6 +14,10 @@ pub enum AuthError {
     MfaAlreadyEnabled,
     MfaNotPending,
     MfaLocked { retry_after_secs: i64 },
+    MfaResetForbidden,
+    MfaNotActive,
+    InvalidReason,
+    UserNotFound,
 }
 
 impl From<AuthError> for AppError {
@@ -74,6 +78,26 @@ impl From<AuthError> for AppError {
                 StatusCode::CONFLICT,
                 "MFA_NOT_ENABLED",
                 "No hay una configuración de MFA pendiente. Comienza la configuración.",
+            ),
+            AuthError::MfaResetForbidden => AppError::new(
+                StatusCode::FORBIDDEN,
+                "MFA_RESET_FORBIDDEN",
+                "No tienes permiso para restablecer el MFA de esta cuenta.",
+            ),
+            AuthError::MfaNotActive => AppError::new(
+                StatusCode::CONFLICT,
+                "MFA_NOT_ENABLED",
+                "La cuenta no tiene un factor activo que restablecer.",
+            ),
+            AuthError::InvalidReason => AppError::new(
+                StatusCode::BAD_REQUEST,
+                "INVALID_REASON",
+                "El motivo es obligatorio y admite hasta 500 caracteres.",
+            ),
+            AuthError::UserNotFound => AppError::new(
+                StatusCode::NOT_FOUND,
+                "USER_NOT_FOUND",
+                "Usuario no encontrado.",
             ),
             AuthError::MfaLocked { retry_after_secs } => AppError::new(
                 StatusCode::TOO_MANY_REQUESTS,

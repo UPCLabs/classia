@@ -57,6 +57,7 @@ impl JwtService {
             exp: issued_at + expiration_secs,
             iss: self.issuer.clone(),
             purpose,
+            token_version: user.token_version,
         };
 
         encode(&Header::new(Algorithm::HS256), &claims, &self.encoding_key)

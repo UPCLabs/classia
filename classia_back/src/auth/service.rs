@@ -18,12 +18,13 @@ use crate::{
         mfa::{self, MfaCipher},
         mfa_repository::{self as repository, MfaState, MfaStatus},
     },
-    users::UserService,
+    users::{UserRole, UserService},
     util::password::validate_password,
 };
 
 /// Lifetime of the partial session between password and code (SDS v2.2 §14.3).
 pub const MFA_SESSION_SECS: i64 = 300;
+const MAX_RESET_REASON_CHARS: usize = 500;
 
 pub enum LoginOutcome {
     Authenticated(String),
@@ -348,6 +349,99 @@ impl AuthService {
         .await?;
         Err(error)
     }
+}
+
+impl AuthService {
+    /// UC-006: an administrator disables another account's active factor and
+    /// revokes its sessions (SDS v2.2 §14.6).
+    pub async fn reset_mfa(
+        &self,
+        actor_id: Uuid,
+        actor_role: &UserRole,
+        target_id: Uuid,
+        reason: &str,
+    ) -> Result<(), AuthError> {
+        if !actor_role.is_admin() {
+            return Err(AuthError::MfaResetForbidden);
+        }
+        let reason = reason.trim();
+        if reason.is_empty() || reason.chars().count() > MAX_RESET_REASON_CHARS {
+            return Err(AuthError::InvalidReason);
+        }
+
+        let mut transaction = self.pool.begin().await.map_err(database_error)?;
+        let (target_role, status) = repository::lock_reset_target(&mut transaction, target_id)
+            .await
+            .map_err(database_error)?
+            .ok_or(AuthError::UserNotFound)?;
+
+        let denial = if actor_id == target_id || !can_reset(actor_role, &target_role) {
+            Some((AuthError::MfaResetForbidden, "forbidden"))
+        } else if status != MfaStatus::Active {
+            Some((AuthError::MfaNotActive, "mfa_not_active"))
+        } else {
+            None
+        };
+        if let Some((error, code)) = denial {
+            transaction.rollback().await.map_err(database_error)?;
+            record_reset(
+                &self.pool,
+                actor_id,
+                target_id,
+                AuditResult::Denied,
+                reason,
+                Some(code),
+            )
+            .await?;
+            return Err(error);
+        }
+
+        repository::reset(&mut transaction, target_id)
+            .await
+            .map_err(database_error)?;
+        record_reset(
+            &mut *transaction,
+            actor_id,
+            target_id,
+            AuditResult::Success,
+            reason,
+            None,
+        )
+        .await?;
+        transaction.commit().await.map_err(database_error)
+    }
+}
+
+/// SuperAdmin resets Admin or another SuperAdmin; Admin resets Teacher or Student.
+fn can_reset(actor: &UserRole, target: &UserRole) -> bool {
+    match actor {
+        UserRole::SuperAdmin => matches!(target, UserRole::Admin | UserRole::SuperAdmin),
+        UserRole::Admin => matches!(target, UserRole::Teacher | UserRole::Student),
+        _ => false,
+    }
+}
+
+async fn record_reset<'e>(
+    executor: impl PgExecutor<'e>,
+    actor_id: Uuid,
+    target_id: Uuid,
+    result: AuditResult,
+    reason: &str,
+    denial: Option<&'static str>,
+) -> Result<(), AuthError> {
+    audit::record(
+        executor,
+        &NewAuditEvent {
+            actor_user_id: Some(actor_id),
+            target: AuditTarget::User,
+            target_id: Some(target_id),
+            action: AuditAction::MfaReset,
+            result,
+            details: json!({ "reason": reason, "denial": denial }),
+        },
+    )
+    .await
+    .map_err(database_error)
 }
 
 fn lock_error(state: &MfaState) -> Option<AuthError> {

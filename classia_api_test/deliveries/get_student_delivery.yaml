@@ -1,0 +1,3 @@
+name: get my delivery
+method: GET
+url: '{{BASE_URL}}/activities/{{ACT_PUBLISHED_ID}}/deliveries/me'

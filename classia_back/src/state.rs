@@ -4,6 +4,7 @@ use crate::{
     activities::ActivityService,
     auth::AuthService,
     courses::{CourseService, EnrollmentService},
+    deliveries::{DeliveryService, EvaluationService},
     users::UserService,
 };
 
@@ -13,6 +14,8 @@ pub(crate) struct ClassiaState {
     pub(crate) course_service: Arc<CourseService>,
     pub(crate) enrollment_service: Arc<EnrollmentService>,
     pub(crate) activity_service: Arc<ActivityService>,
+    pub(crate) delivery_service: Arc<DeliveryService>,
+    pub(crate) evaluation_service: Arc<EvaluationService>,
     pub(crate) auth_service: Arc<AuthService>,
 }
 
@@ -22,6 +25,8 @@ impl ClassiaState {
         course_service: Arc<CourseService>,
         enrollment_service: Arc<EnrollmentService>,
         activity_service: Arc<ActivityService>,
+        delivery_service: Arc<DeliveryService>,
+        evaluation_service: Arc<EvaluationService>,
         auth_service: Arc<AuthService>,
     ) -> Self {
         Self {
@@ -29,6 +34,8 @@ impl ClassiaState {
             course_service,
             enrollment_service,
             activity_service,
+            delivery_service,
+            evaluation_service,
             auth_service,
         }
     }

@@ -55,6 +55,7 @@ impl UserRepository {
                   role,
                   status,
                   token,
+                  token_version,
                   created_at,
                   updated_at
               FROM users
@@ -77,6 +78,7 @@ impl UserRepository {
                     role,
                     status,
                     token,
+                    token_version,
                     created_at,
                     updated_at
                 FROM users
@@ -107,6 +109,7 @@ impl UserRepository {
             role,
             status,
             token,
+            token_version,
             created_at,
             updated_at
         "#,
@@ -145,7 +148,7 @@ impl UserRepository {
             role = COALESCE($3, role),
             updated_at = now()
         WHERE id = $4
-        RETURNING id, name, email, password, role, status, token, created_at, updated_at
+        RETURNING id, name, email, password, role, status, token, token_version, created_at, updated_at
         "#,
         )
         .bind(name)
@@ -163,7 +166,7 @@ impl UserRepository {
         SET status = $1,
             updated_at = now()
         WHERE id = $2
-        RETURNING id, name, email, password, role, status, token, created_at, updated_at
+        RETURNING id, name, email, password, role, status, token, token_version, created_at, updated_at
         "#,
         )
         .bind(status)
@@ -180,7 +183,7 @@ impl UserRepository {
     ) -> Result<Vec<User>, sqlx::Error> {
         query_as::<_, User>(
             r#"
-        SELECT id, name, email, password, role, status, token, created_at, updated_at
+        SELECT id, name, email, password, role, status, token, token_version, created_at, updated_at
         FROM users
         WHERE
             ($1::text IS NULL OR name ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%') AND

@@ -23,6 +23,7 @@ pub fn route() -> Router<ClassiaState> {
         .route("/change-password", patch(change_password))
         .route("/{id}", get(get_user).patch(update_user))
         .route("/{id}/status", patch(update_user_status))
+        .route("/{id}/reset-mfa", post(reset_mfa))
 }
 
 fn require_admin(user: &AuthenticatedUser) -> Result<(), AppError> {
@@ -108,4 +109,23 @@ async fn update_user_status(
         .await?;
 
     Ok(Json(updated.into()))
+}
+
+#[derive(serde::Deserialize)]
+struct ResetMfaDto {
+    #[serde(default)]
+    reason: String,
+}
+
+async fn reset_mfa(
+    State(state): State<ClassiaState>,
+    user: AuthenticatedUser,
+    Path(id): Path<Uuid>,
+    Json(body): Json<ResetMfaDto>,
+) -> Result<StatusCode, AppError> {
+    state
+        .auth_service
+        .reset_mfa(user.id, &user.role, id, &body.reason)
+        .await?;
+    Ok(StatusCode::NO_CONTENT)
 }
