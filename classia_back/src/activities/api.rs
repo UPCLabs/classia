@@ -1,11 +1,15 @@
 use super::dto::{ActivityCreateDto, ActivityResponseDto, ActivityUpdateDto};
-use crate::{auth::AuthenticatedUser, error::AppError, state::ClassiaState};
+
+use crate::{auth::AuthenticatedUser, deliveries, error::AppError, state::ClassiaState};
+
 use axum::{
     Json, Router,
     extract::{Path, State},
     routing::{get, post},
 };
+
 use serde::Serialize;
+
 use uuid::Uuid;
 
 #[derive(Debug, Serialize)]
@@ -17,6 +21,14 @@ pub fn route() -> Router<ClassiaState> {
     Router::new()
         .route("/{activity_id}", get(get_activity).patch(update_activity))
         .route("/{activity_id}/publish", post(publish_activity))
+        .route(
+            "/{activity_id}/deliveries",
+            get(deliveries::list_deliveries),
+        )
+        .route(
+            "/{activity_id}/deliveries/me",
+            get(deliveries::get_my_delivery),
+        )
 }
 
 pub(crate) async fn create_activity(

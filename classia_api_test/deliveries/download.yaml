@@ -1,0 +1,3 @@
+name: download delivery file
+method: GET
+url: '{{BASE_URL}}/deliveries/{{DELIVERY_ID}}/file'

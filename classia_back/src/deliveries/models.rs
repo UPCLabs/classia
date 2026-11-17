@@ -37,3 +37,20 @@ pub struct Evaluation {
     pub graded_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct DeliveryRow {
+    pub id: Uuid,
+    pub activity_id: Uuid,
+    pub status: DeliveryStatus,
+    pub version: i32,
+    pub submitted_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub student_id: Uuid,
+    pub student_name: String,
+    pub student_email: String,
+    pub score: Option<f64>,
+    pub feedback: Option<String>,
+    pub graded_at: Option<DateTime<Utc>>,
+    pub evaluation_updated_at: Option<DateTime<Utc>>,
+}
