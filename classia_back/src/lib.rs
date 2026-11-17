@@ -6,18 +6,10 @@ use sqlx::PgPool;
 use crate::{auth::JwtConfig, state::ClassiaState};
 
 mod activities;
-#[allow(
-    dead_code,
-    reason = "consumed by the deliveries services in DEV-12 to DEV-14"
-)]
 mod audit;
 mod auth;
 mod config;
 mod courses;
-#[allow(
-    dead_code,
-    reason = "consumed by the deliveries services in DEV-12 to DEV-14"
-)]
 mod deliveries;
 mod error;
 mod state;
@@ -59,6 +51,10 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
         activity_service.clone(),
         deliveries::files_dir_from_env(),
     ));
+    let evaluation_service = Arc::new(deliveries::build_evaluation_service(
+        pool.clone(),
+        activity_service.clone(),
+    ));
     let auth_service = Arc::new(
         auth::build_service(
             JwtConfig {
@@ -79,6 +75,7 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
         enrollment_service,
         activity_service,
         delivery_service,
+        evaluation_service,
         auth_service,
     );
 

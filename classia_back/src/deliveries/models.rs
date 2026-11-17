@@ -13,6 +13,10 @@ pub enum DeliveryStatus {
 
 /// `file_url` is the server-generated `<uuid>.docx` name inside the deliveries
 /// volume (DEC-03); it is never exposed through the API.
+#[allow(
+    dead_code,
+    reason = "full table row checked by the DEV-11 migration tests; the API reads DeliveryRow"
+)]
 #[derive(Debug, sqlx::FromRow)]
 pub struct Delivery {
     pub id: Uuid,
@@ -27,6 +31,10 @@ pub struct Delivery {
 
 /// `score` is stored as `NUMERIC(3, 1)`; queries must select it as
 /// `score::float8` so it decodes without a decimal dependency.
+#[allow(
+    dead_code,
+    reason = "full table row checked by the DEV-11 migration tests; the API reads DeliveryRow"
+)]
 #[derive(Debug, sqlx::FromRow)]
 pub struct Evaluation {
     pub id: Uuid,

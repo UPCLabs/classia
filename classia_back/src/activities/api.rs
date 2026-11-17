@@ -4,7 +4,7 @@ use crate::{auth::AuthenticatedUser, deliveries, error::AppError, state::Classia
 
 use axum::{
     Json, Router,
-    extract::{Path, State},
+    extract::{DefaultBodyLimit, Path, State},
     routing::{get, post},
 };
 
@@ -23,7 +23,9 @@ pub fn route() -> Router<ClassiaState> {
         .route("/{activity_id}/publish", post(publish_activity))
         .route(
             "/{activity_id}/deliveries",
-            get(deliveries::list_deliveries),
+            get(deliveries::list_deliveries)
+                .post(deliveries::submit_delivery)
+                .layer(DefaultBodyLimit::max(deliveries::MAX_REQUEST_BYTES)),
         )
         .route(
             "/{activity_id}/deliveries/me",

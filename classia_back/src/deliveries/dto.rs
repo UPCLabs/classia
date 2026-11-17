@@ -1,6 +1,6 @@
 use super::models::{DeliveryRow, DeliveryStatus};
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Debug, Serialize)]
@@ -57,4 +57,12 @@ impl From<DeliveryRow> for DeliveryResponseDto {
             evaluation,
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct EvaluationInputDto {
+    pub score: f64,
+    #[serde(default)]
+    pub feedback: Option<String>,
+    pub expected_version: i32,
 }
