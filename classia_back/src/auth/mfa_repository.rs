@@ -4,6 +4,8 @@ use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
+use crate::users::UserRole;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MfaStatus {
     Disabled,
@@ -144,6 +146,36 @@ pub async fn record_failure(
     .bind(user_id)
     .bind(failed_attempts)
     .bind(locked_until)
+    .execute(connection)
+    .await?;
+
+    Ok(())
+}
+
+/// Locks the reset target regardless of its account status (SDS v2.2 §14.6).
+pub async fn lock_reset_target(
+    connection: &mut PgConnection,
+    user_id: Uuid,
+) -> sqlx::Result<Option<(UserRole, MfaStatus)>> {
+    let row: Option<(UserRole, String)> =
+        sqlx::query_as("SELECT role, mfa_status FROM users WHERE id = $1 FOR UPDATE")
+            .bind(user_id)
+            .fetch_optional(connection)
+            .await?;
+
+    Ok(row.map(|(role, status)| (role, MfaStatus::parse(&status))))
+}
+
+/// Disables the factor and revokes every full and partial session.
+pub async fn reset(connection: &mut PgConnection, user_id: Uuid) -> sqlx::Result<()> {
+    sqlx::query(
+        "UPDATE users
+         SET mfa_status = 'disabled', mfa_secret_ciphertext = NULL, mfa_nonce = NULL,
+             mfa_last_step = NULL, mfa_failed_attempts = 0, mfa_locked_until = NULL,
+             mfa_enabled_at = NULL, token_version = token_version + 1, updated_at = now()
+         WHERE id = $1",
+    )
+    .bind(user_id)
     .execute(connection)
     .await?;
 

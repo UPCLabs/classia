@@ -38,6 +38,7 @@ pub enum AuditAction {
     MfaSetupStarted,
     MfaActivated,
     MfaChallenge,
+    MfaReset,
 }
 
 impl AuditAction {
@@ -49,6 +50,7 @@ impl AuditAction {
             Self::MfaSetupStarted => "mfa.setup_started",
             Self::MfaActivated => "mfa.activated",
             Self::MfaChallenge => "mfa.challenge",
+            Self::MfaReset => "mfa.reset",
         }
     }
 }

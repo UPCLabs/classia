@@ -23,6 +23,7 @@ fn user(role: UserRole) -> User {
         role,
         status: "active".to_string(),
         token: String::new(),
+        token_version: 0,
         created_at: now,
         updated_at: now,
     }

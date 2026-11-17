@@ -183,6 +183,16 @@ async fn challenge_mfa(
             .filter(|claims| claims.purpose == TokenPurpose::MfaPending)
             .ok_or_else(|| AppError::from(crate::auth::error::AuthError::MfaSessionExpired))?;
 
+        let current = state
+            .user_service
+            .find_active_user(claims.sub)
+            .await
+            .map_err(AppError::from)?
+            .is_some_and(|user| user.token_version == claims.token_version);
+        if !current {
+            return Err(crate::auth::error::AuthError::MfaSessionExpired.into());
+        }
+
         let access_token = state
             .auth_service
             .challenge_mfa(claims.sub, &request.code, ChallengeMode::Login)

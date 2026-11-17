@@ -34,6 +34,7 @@ impl AuthenticatedUser {
             .user_service
             .find_active_user(claims.sub)
             .await?
+            .filter(|user| user.token_version == claims.token_version)
             .ok_or_else(AppError::invalid_token)?;
 
         Ok(Self {

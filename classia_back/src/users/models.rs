@@ -37,6 +37,7 @@ pub struct User {
     pub status: String,
     #[allow(unused)]
     pub token: String,
+    pub token_version: i64,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

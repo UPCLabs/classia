@@ -16,6 +16,7 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use totp_rs::{Secret, Totp};
 use tower::ServiceExt;
+use uuid::Uuid;
 
 const JWT_SECRET: &str = "0123456789abcdef0123456789abcdef";
 const MFA_KEY: &str = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
@@ -833,4 +834,181 @@ async fn migration_upgrades_existing_users_without_rewriting_applied_history(poo
         )
     );
     assert_eq!(login(&app(pool)).await.status(), StatusCode::NO_CONTENT);
+}
+
+async fn insert_with_role(pool: &PgPool, email: &str, role: &str) -> Uuid {
+    let hash = Argon2::default()
+        .hash_password(PASSWORD.as_bytes())
+        .expect("password hashing succeeds")
+        .to_string();
+    sqlx::query_scalar(
+        "INSERT INTO users (name, email, password, role, status, token)
+         VALUES ('User', $1, $2, $3::user_role, 'active', '')
+         RETURNING id",
+    )
+    .bind(email)
+    .bind(hash)
+    .bind(role)
+    .fetch_one(pool)
+    .await
+    .expect("user is inserted")
+}
+
+async fn access_for(app: &Router, email: &str) -> String {
+    let response = send(
+        app,
+        Method::POST,
+        "/api/auth/login",
+        Some(json!({ "email": email, "password": PASSWORD })),
+        None,
+    )
+    .await;
+    set_cookie(&response, "classia_access").expect("full session")
+}
+
+async fn reset(app: &Router, target: Uuid, reason: &str, cookie: &str) -> Response<Body> {
+    send(
+        app,
+        Method::POST,
+        &format!("/api/users/{target}/reset-mfa"),
+        Some(json!({ "reason": reason })),
+        Some(cookie),
+    )
+    .await
+}
+
+async fn teacher_id(pool: &PgPool) -> Uuid {
+    sqlx::query_scalar("SELECT id FROM users WHERE email = $1")
+        .bind(EMAIL)
+        .fetch_one(pool)
+        .await
+        .expect("teacher exists")
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn admin_reset_disables_the_factor_and_revokes_sessions(pool: PgPool) {
+    insert_teacher(&pool).await;
+    let admin = insert_with_role(&pool, "admin@example.com", "admin").await;
+    let app = app(pool.clone());
+    let target = teacher_id(&pool).await;
+
+    let old_access = access_for(&app, EMAIL).await;
+    activate_mfa(&app).await;
+    let partial = set_cookie(&login(&app).await, "classia_mfa").expect("partial session");
+    let admin_cookie = access_for(&app, "admin@example.com").await;
+
+    let empty = reset(&app, target, "   ", &admin_cookie).await;
+    assert_eq!(json_body(empty).await["code"], "INVALID_REASON");
+    let long = reset(&app, target, &"x".repeat(501), &admin_cookie).await;
+    assert_eq!(json_body(long).await["code"], "INVALID_REASON");
+    let unknown = reset(&app, Uuid::now_v7(), "Perdió el celular", &admin_cookie).await;
+    assert_eq!(json_body(unknown).await["code"], "USER_NOT_FOUND");
+    let own = reset(&app, admin, "Perdió el celular", &admin_cookie).await;
+    assert_eq!(json_body(own).await["code"], "MFA_RESET_FORBIDDEN");
+
+    let done = reset(&app, target, "  Perdió el celular  ", &admin_cookie).await;
+    assert_eq!(done.status(), StatusCode::NO_CONTENT);
+
+    let (status, secret, version): (String, Option<Vec<u8>>, i64) = sqlx::query_as(
+        "SELECT mfa_status, mfa_secret_ciphertext, token_version FROM users WHERE id = $1",
+    )
+    .bind(target)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(status, "disabled");
+    assert!(secret.is_none());
+    assert_eq!(version, 1);
+
+    let revoked = send(&app, Method::GET, "/api/auth/me", None, Some(&old_access)).await;
+    assert_eq!(revoked.status(), StatusCode::UNAUTHORIZED);
+    let stale_challenge = send(
+        &app,
+        Method::POST,
+        "/api/auth/challenge-mfa",
+        Some(json!({ "code": "123456" })),
+        Some(&partial),
+    )
+    .await;
+    assert_eq!(
+        json_body(stale_challenge).await["code"],
+        "MFA_SESSION_EXPIRED"
+    );
+
+    let again = reset(&app, target, "Otra vez", &admin_cookie).await;
+    assert_eq!(again.status(), StatusCode::CONFLICT);
+    assert_eq!(json_body(again).await["code"], "MFA_NOT_ENABLED");
+
+    let relogin = login(&app).await;
+    assert_eq!(relogin.status(), StatusCode::NO_CONTENT);
+    assert!(set_cookie(&relogin, "classia_access").is_some());
+
+    let reason: String = sqlx::query_scalar(
+        "SELECT details->>'reason' FROM audit_events
+         WHERE action = 'mfa.reset' AND result = 'success'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(reason, "Perdió el celular");
+    let denied: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM audit_events WHERE action = 'mfa.reset' AND result = 'denied'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(denied, 2);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn reset_follows_the_role_hierarchy(pool: PgPool) {
+    insert_teacher(&pool).await;
+    let super_admin = insert_with_role(&pool, "root@example.com", "super_admin").await;
+    let other_super = insert_with_role(&pool, "root2@example.com", "super_admin").await;
+    let admin = insert_with_role(&pool, "admin@example.com", "admin").await;
+    let student = insert_with_role(&pool, "student@example.com", "student").await;
+    let app = app(pool.clone());
+    let teacher = teacher_id(&pool).await;
+    let student_cookie = access_for(&app, "student@example.com").await;
+    let root = access_for(&app, "root@example.com").await;
+    let admin_cookie = access_for(&app, "admin@example.com").await;
+    activate_mfa(&app).await;
+    sqlx::query(
+        "UPDATE users SET mfa_status = 'active', mfa_secret_ciphertext = 'x', mfa_nonce = 'y',
+                mfa_enabled_at = now(), mfa_last_step = 1
+         WHERE id = ANY($1)",
+    )
+    .bind(vec![other_super, admin, student])
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let by_student = reset(&app, admin, "motivo", &student_cookie).await;
+    assert_eq!(by_student.status(), StatusCode::FORBIDDEN);
+
+    let root_on_self = reset(&app, super_admin, "motivo", &root).await;
+    assert_eq!(json_body(root_on_self).await["code"], "MFA_RESET_FORBIDDEN");
+    let admin_on_super = reset(&app, other_super, "motivo", &admin_cookie).await;
+    assert_eq!(
+        json_body(admin_on_super).await["code"],
+        "MFA_RESET_FORBIDDEN"
+    );
+    let root_on_teacher = reset(&app, teacher, "motivo", &root).await;
+    assert_eq!(
+        json_body(root_on_teacher).await["code"],
+        "MFA_RESET_FORBIDDEN"
+    );
+
+    assert_eq!(
+        reset(&app, other_super, "motivo", &root).await.status(),
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        reset(&app, student, "motivo", &admin_cookie).await.status(),
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        reset(&app, teacher, "motivo", &admin_cookie).await.status(),
+        StatusCode::NO_CONTENT
+    );
 }
