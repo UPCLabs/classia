@@ -21,6 +21,8 @@ export default defineConfig(({ mode }) => {
       setupFiles: './tests/setup.ts',
       include: ['tests/**/*.test.{ts,tsx}'],
       css: true,
+      // jsdom workers saturate hybrid CPUs; multi-step UI tests exceed the 5 s default there.
+      testTimeout: 15000,
     },
   }
 })
