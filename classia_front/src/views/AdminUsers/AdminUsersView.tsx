@@ -27,7 +27,7 @@ function canResetMfa(currentUser: AuthUser | null, target: Usuario): boolean {
   }
 
   if (currentUser.role === 'SuperAdmin') {
-    return target.role === 'Admin'
+    return target.role === 'Admin' || target.role === 'SuperAdmin'
   }
 
   if (currentUser.role === 'Admin') {

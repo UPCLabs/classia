@@ -91,11 +91,12 @@ describe('AdminUsersView — restablecer MFA', () => {
     ).toHaveLength(2)
   })
 
-  it('el superadministrador solo restablece administradores', async () => {
+  it('el superadministrador restablece administradores y otros superadministradores', async () => {
     apiMock.get.mockResolvedValue({
       data: {
         items: [
           userRecord('super-1', 'Cuenta actual', 'SuperAdmin'),
+          userRecord('super-2', 'Otro Super', 'SuperAdmin'),
           otherAdmin,
           teacher,
         ],
@@ -106,7 +107,7 @@ describe('AdminUsersView — restablecer MFA', () => {
     await screen.findByText('Otro Admin')
     expect(
       screen.getAllByRole('button', { name: 'Restablecer MFA' }),
-    ).toHaveLength(1)
+    ).toHaveLength(2)
   })
 
   it('exige motivo y envía el restablecimiento', async () => {
