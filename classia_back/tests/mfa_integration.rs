@@ -935,9 +935,26 @@ async fn admin_reset_disables_the_factor_and_revokes_sessions(pool: PgPool) {
         "MFA_SESSION_EXPIRED"
     );
 
+    let before_second_reset: (String, Option<Vec<u8>>, i64) = sqlx::query_as(
+        "SELECT mfa_status, mfa_secret_ciphertext, token_version FROM users WHERE id = $1",
+    )
+    .bind(target)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+
     let again = reset(&app, target, "Otra vez", &admin_cookie).await;
     assert_eq!(again.status(), StatusCode::CONFLICT);
     assert_eq!(json_body(again).await["code"], "MFA_NOT_ENABLED");
+
+    let after_second_reset: (String, Option<Vec<u8>>, i64) = sqlx::query_as(
+        "SELECT mfa_status, mfa_secret_ciphertext, token_version FROM users WHERE id = $1",
+    )
+    .bind(target)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(after_second_reset, before_second_reset);
 
     let relogin = login(&app).await;
     assert_eq!(relogin.status(), StatusCode::NO_CONTENT);

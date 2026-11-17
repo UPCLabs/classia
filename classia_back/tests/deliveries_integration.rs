@@ -340,6 +340,8 @@ async fn submit_creates_delivery_and_enforces_contract_rules(pool: PgPool) {
     assert_eq!(delivery["student"]["email"], "student@example.com");
     assert!(delivery.get("file_url").is_none());
     let file = stored_file(&pool, delivery["id"].as_str().unwrap()).await;
+    let uuid_name = file.strip_suffix(".docx").unwrap();
+    assert!(Uuid::parse_str(uuid_name).is_ok());
     assert_eq!(std::fs::read(files_dir().join(&file)).unwrap(), docx("v1"));
 
     let duplicate = submit(&f, f.activity_id, &f.student, valid).await;
