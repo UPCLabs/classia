@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import httpClient from '../api/httpClient'
+import { challengeMfa } from '../api/mfa'
 import type { ApiError, AuthUser } from '../types/api'
-import { AuthContext } from './context'
+import { AuthContext, type SignInResult } from './context'
 import getErrorMessage from './getErrorMessage'
 
 function isUnauthenticatedError(error: unknown): error is ApiError {
@@ -49,8 +50,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [])
 
-  async function signIn(email: string, password: string) {
-    await httpClient.post<void>('/auth/login', { email, password })
+  async function signIn(email: string, password: string): Promise<SignInResult> {
+    let requiresMfa: boolean
+
+    try {
+      const { data } = await httpClient.post<{ mfa_required?: boolean }>(
+        '/auth/login',
+        { email, password },
+      )
+      requiresMfa = data?.mfa_required === true
+    } catch (loginError: unknown) {
+      if (!isMfaRequiredError(loginError)) {
+        throw loginError
+      }
+      requiresMfa = true
+    }
+
+    if (requiresMfa) {
+      return 'mfa'
+    }
+
+    await loadCurrentUser()
+    return 'authenticated'
+  }
+
+  async function completeMfaSignIn(code: string) {
+    const verified = await challengeMfa(code)
+    if (!verified) {
+      throw new Error('Código inválido o vencido. Inténtalo de nuevo.')
+    }
+    await loadCurrentUser()
+  }
+
+  async function loadCurrentUser() {
     const { data } = await httpClient.get<AuthUser>('/auth/me')
     setUser(data)
     setError(null)
@@ -63,8 +95,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, error, signIn, signOut }}>
+    <AuthContext.Provider
+      value={{ user, isLoading, error, signIn, completeMfaSignIn, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   )
+}
+
+function isMfaRequiredError(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return false
+  }
+
+  return (error as ApiError).code === 'MFA_REQUIRED'
 }

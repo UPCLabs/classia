@@ -22,9 +22,13 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:?Set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in .env}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:?Set MFA_ENCRYPTION_KEY in .env (64 hex characters)}
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
       BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      DELIVERIES_DIR: /var/lib/classia/deliveries
+    volumes:
+      - deliveries_data:/var/lib/classia/deliveries
     ports:
       - "127.0.0.1:5000:5000"
     depends_on:
@@ -43,3 +47,4 @@ services:
 
 volumes:
   postgres_data:
+  deliveries_data:

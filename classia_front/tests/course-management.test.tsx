@@ -57,6 +57,7 @@ function renderCourseView(
           isLoading: false,
           error: null,
           signIn: vi.fn(),
+          completeMfaSignIn: vi.fn(),
           signOut: vi.fn(),
         }}
       >
@@ -285,6 +286,7 @@ describe('DashboardView', () => {
           isLoading: false,
           error: null,
           signIn: vi.fn(),
+          completeMfaSignIn: vi.fn(),
           signOut: vi.fn(),
         }}
       >

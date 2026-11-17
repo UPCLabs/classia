@@ -1,4 +1,4 @@
--- Classia — Datos de prueba de integración del Ciclo 1
+-- Classia — Datos de prueba de integración de los Ciclos 1 y 2
 -- Plan de Pruebas de Integración v1.1, sección 2.1.3 (Ambiente).
 --
 -- Deja la base de datos en el estado inicial de los casos CPI-001 a CPI-019.
@@ -6,9 +6,9 @@
 -- con "Recargar los datos de prueba". Es idempotente: se puede ejecutar varias
 -- veces seguidas.
 --
--- Solo borra datos de prueba: usuarios con correo @classia.test, sus cursos e
--- inscripciones, y los cursos con los códigos usados en los casos. No toca el
--- Superadministrador de arranque ni otros datos.
+-- Solo borra datos de prueba: usuarios con correo @classia.test, sus cursos,
+-- inscripciones y actividades, y los cursos con los códigos usados en los
+-- casos. No toca el Superadministrador de arranque ni otros datos.
 --
 -- Uso con el stack de Docker Compose (desde la raíz del repositorio):
 --   docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
@@ -43,13 +43,13 @@ FROM (VALUES
     ('Cambio Contraseña CPI',  'cambio.cpi@classia.test',      'student')
 ) AS seed(name, email, role);
 
-INSERT INTO courses (name, code, teacher_id, status, capacity)
-SELECT seed.name, seed.code, teacher.id, 'active', seed.capacity
+INSERT INTO courses (id, name, code, teacher_id, status, capacity)
+SELECT seed.id::uuid, seed.name, seed.code, teacher.id, 'active', seed.capacity
 FROM (VALUES
-    ('Ingeniería de Software', 'IS-001', 'docente1.cpi@classia.test', 30),
-    ('Bases de Datos',         'BD-001', 'docente1.cpi@classia.test', 1),
-    ('Redes',                  'RD-001', 'docente2.cpi@classia.test', 20)
-) AS seed(name, code, teacher_email, capacity)
+    ('019a4b00-0000-7000-8000-000000000001', 'Ingeniería de Software', 'IS-001', 'docente1.cpi@classia.test', 30),
+    ('019a4b00-0000-7000-8000-000000000002', 'Bases de Datos',         'BD-001', 'docente1.cpi@classia.test', 1),
+    ('019a4b00-0000-7000-8000-000000000003', 'Redes',                  'RD-001', 'docente2.cpi@classia.test', 20)
+) AS seed(id, name, code, teacher_email, capacity)
 JOIN users teacher ON teacher.email = seed.teacher_email;
 
 INSERT INTO course_enrollments (course_id, student_id)
@@ -62,15 +62,44 @@ FROM (VALUES
 JOIN courses course ON course.code = seed.code
 JOIN users student ON student.email = seed.student_email;
 
+INSERT INTO activities
+    (id, course_id, title, description, due_at, status, published_at)
+SELECT seed.id::uuid, course.id, seed.title, seed.description,
+       seed.due_at::timestamptz, seed.status::activity_status,
+       seed.published_at::timestamptz
+FROM (VALUES
+    (
+        '019a4b10-0000-7000-8000-000000000001',
+        'IS-001',
+        'Taller 1: modelo de dominio',
+        'Elaborar el diagrama de clases del módulo de cursos.',
+        '2030-11-03T04:59:00Z',
+        'draft',
+        NULL
+    ),
+    (
+        '019a4b10-0000-7000-8000-000000000002',
+        'IS-001',
+        'Taller 2: arquitectura',
+        'Documentar la arquitectura de tres capas.',
+        '2030-11-05T04:59:00Z',
+        'published',
+        '2026-11-02T22:00:00Z'
+    )
+) AS seed(id, course_code, title, description, due_at, status, published_at)
+JOIN courses course ON course.code = seed.course_code;
+
 COMMIT;
 
 -- Verificación rápida del estado inicial esperado:
---   7 usuarios @classia.test, 3 cursos y 3 inscripciones.
+--   7 usuarios @classia.test, 3 cursos, 3 inscripciones y 2 actividades.
 SELECT c.code, c.name, t.email AS docente, c.capacity,
-       COUNT(e.student_id) AS inscritos
+       COUNT(DISTINCT e.student_id) AS inscritos,
+       COUNT(DISTINCT a.id) AS actividades
 FROM courses c
 JOIN users t ON t.id = c.teacher_id
 LEFT JOIN course_enrollments e ON e.course_id = c.id
+LEFT JOIN activities a ON a.course_id = c.id
 WHERE c.code IN ('IS-001', 'BD-001', 'RD-001')
 GROUP BY c.code, c.name, t.email, c.capacity
 ORDER BY c.code;

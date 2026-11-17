@@ -5,9 +5,12 @@ use sqlx::PgPool;
 
 use crate::{auth::JwtConfig, state::ClassiaState};
 
+mod activities;
+mod audit;
 mod auth;
 mod config;
 mod courses;
+mod deliveries;
 mod error;
 mod state;
 mod users;
@@ -17,6 +20,9 @@ pub struct JwtSettings {
     pub secret: String,
     pub issuer: String,
     pub expiration: i64,
+    /// AES-256 key for TOTP secrets (64 hex characters). Without it, MFA
+    /// setup and verification fail instead of storing secrets in clear text.
+    pub mfa_encryption_key: Option<String>,
 }
 
 pub async fn connect_database(database_url: &str) -> Result<PgPool, Box<dyn Error>> {
@@ -32,9 +38,22 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
     let user_service = Arc::new(users::build_service(pool.clone()));
     let course_service = Arc::new(courses::build_service(pool.clone(), user_service.clone()));
     let enrollment_service = Arc::new(courses::build_enrollment_service(
-        pool,
+        pool.clone(),
         user_service.clone(),
         course_service.clone(),
+    ));
+    let activity_service = Arc::new(activities::build_service(
+        pool.clone(),
+        course_service.clone(),
+    ));
+    let delivery_service = Arc::new(deliveries::build_service(
+        pool.clone(),
+        activity_service.clone(),
+        deliveries::files_dir_from_env(),
+    ));
+    let evaluation_service = Arc::new(deliveries::build_evaluation_service(
+        pool.clone(),
+        activity_service.clone(),
     ));
     let auth_service = Arc::new(
         auth::build_service(
@@ -44,6 +63,8 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
                 expiration: jwt.expiration,
             },
             user_service.clone(),
+            pool,
+            jwt.mfa_encryption_key.as_deref(),
         )
         .map_err(|error| io::Error::other(format!("{error:?}")))?,
     );
@@ -52,6 +73,9 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
         user_service,
         course_service,
         enrollment_service,
+        activity_service,
+        delivery_service,
+        evaluation_service,
         auth_service,
     );
 
@@ -60,6 +84,8 @@ pub fn build_router(pool: PgPool, jwt: JwtSettings) -> Result<Router, Box<dyn Er
         .nest("/api/auth", auth::route())
         .nest("/api/users", users::route())
         .nest("/api/courses", courses::route())
+        .nest("/api/activities", activities::route())
+        .nest("/api/deliveries", deliveries::route())
         .with_state(state))
 }
 

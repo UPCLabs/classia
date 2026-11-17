@@ -30,6 +30,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             secret: env::var("JWT_SECRET")?,
             issuer: "classia".to_string(),
             expiration: 86400,
+            mfa_encryption_key: env::var("MFA_ENCRYPTION_KEY").ok(),
         },
     )?;
 

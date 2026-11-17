@@ -107,6 +107,13 @@ export default function AuthenticatedLayout() {
                 >
                   Cambiar contraseña
                 </Link>
+                <Link
+                  className="block rounded-lg px-3 py-2 font-medium hover:bg-crema"
+                  onClick={() => setIsMenuOpen(false)}
+                  to="/account/mfa"
+                >
+                  Configurar MFA
+                </Link>
                 <button
                   className="w-full rounded-lg px-3 py-2 text-left font-medium text-red-800 hover:bg-red-50 disabled:opacity-60"
                   disabled={isSigningOut}

@@ -27,3 +27,14 @@ pub struct LoginRequest {
     pub email: String,
     pub password: String,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct TotpChallenge {
+    pub code: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct TotpResponse {
+    pub secret: String,
+    pub url: String,
+}

@@ -3,6 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { AuthContext } from '../src/auth/context'
 import AdminUsersView from '../src/views/AdminUsers/AdminUsersView'
 import EditUserView from '../src/views/AdminUsers/EditUserView'
 
@@ -30,12 +31,28 @@ function renderAdminUsers(initialPath = '/admin/users') {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialPath]}>
-        <Routes>
-          <Route path="/admin/users" element={<AdminUsersView />} />
-          <Route path="/admin/users/:userId/edit" element={<EditUserView />} />
-        </Routes>
-      </MemoryRouter>
+      <AuthContext.Provider
+        value={{
+          user: {
+            id: 'admin-1',
+            name: 'Admin de prueba',
+            email: 'admin@example.com',
+            role: 'Admin',
+          },
+          isLoading: false,
+          error: null,
+          signIn: vi.fn(),
+          completeMfaSignIn: vi.fn(),
+          signOut: vi.fn(),
+        }}
+      >
+        <MemoryRouter initialEntries={[initialPath]}>
+          <Routes>
+            <Route path="/admin/users" element={<AdminUsersView />} />
+            <Route path="/admin/users/:userId/edit" element={<EditUserView />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthContext.Provider>
     </QueryClientProvider>,
   )
 }
