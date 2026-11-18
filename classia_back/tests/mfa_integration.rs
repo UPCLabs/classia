@@ -127,6 +127,13 @@ fn now() -> u64 {
         .as_secs()
 }
 
+/// A login code after `activate_mfa`, which consumed the current step. The
+/// next step is newer than the consumed one and stays inside the ±1 window
+/// even if the clock crosses a boundary before the server verifies it.
+fn login_code(secret_base32: &str) -> String {
+    totp(secret_base32).generate(now() + 30).to_string()
+}
+
 /// Logs in, sets up MFA and activates it. Returns the base32 secret.
 async fn activate_mfa(app: &Router) -> String {
     let access = set_cookie(&login(app).await, "classia_access").expect("full session");
@@ -147,9 +154,9 @@ async fn activate_mfa(app: &Router) -> String {
     assert!(url.starts_with("otpauth://totp/Classia:"));
     assert!(url.contains("issuer=Classia"));
 
-    // A code from the previous window is still accepted (±1 step), which keeps
-    // the activation code distinct from the login code used later.
-    let code = totp(&secret).generate(now() - 30).to_string();
+    // The current step stays inside the ±1 window even if the clock crosses a
+    // 30-second boundary before the server verifies it.
+    let code = totp(&secret).generate(now()).to_string();
     let activation = send(
         app,
         Method::POST,
@@ -309,7 +316,7 @@ async fn active_mfa_requires_the_code_before_a_full_session(pool: PgPool) {
     let forged = send(&app, Method::GET, "/api/courses", None, Some(&renamed)).await;
     assert_eq!(forged.status(), StatusCode::UNAUTHORIZED);
 
-    let code = totp(&secret).generate(now()).to_string();
+    let code = login_code(&secret);
     let second_step = send(
         &app,
         Method::POST,
@@ -331,7 +338,7 @@ async fn a_code_cannot_be_reused(pool: PgPool) {
     insert_teacher(&pool).await;
     let app = app(pool);
     let secret = activate_mfa(&app).await;
-    let code = totp(&secret).generate(now()).to_string();
+    let code = login_code(&secret);
 
     let partial = set_cookie(&login(&app).await, "classia_mfa").expect("partial session");
     let first = send(
@@ -386,7 +393,7 @@ async fn five_failures_lock_the_verification(pool: PgPool) {
 
     // Even a valid code is refused while locked; a new login does not bypass it.
     let partial = set_cookie(&login(&app).await, "classia_mfa").expect("partial session");
-    let code = totp(&secret).generate(now()).to_string();
+    let code = login_code(&secret);
     let locked = send(
         &app,
         Method::POST,
@@ -412,7 +419,7 @@ async fn setup_is_refused_once_mfa_is_active(pool: PgPool) {
     let secret = activate_mfa(&app).await;
 
     let partial = set_cookie(&login(&app).await, "classia_mfa").expect("partial session");
-    let code = totp(&secret).generate(now()).to_string();
+    let code = login_code(&secret);
     let response = send(
         &app,
         Method::POST,
@@ -580,7 +587,7 @@ async fn concurrent_challenges_accept_a_code_exactly_once(pool: PgPool) {
     let app = app(pool.clone());
     let secret = activate_mfa(&app).await;
     let partial = set_cookie(&login(&app).await, "classia_mfa").unwrap();
-    let body = json!({ "code": totp(&secret).generate(now()).to_string() });
+    let body = json!({ "code": login_code(&secret) });
     let (first, second) = tokio::join!(
         send(
             &app,
@@ -666,7 +673,7 @@ async fn wrong_encryption_key_fails_closed_without_exposing_crypto_details(pool:
         &wrong_app,
         Method::POST,
         "/api/auth/challenge-mfa",
-        Some(json!({ "code": totp(&secret).generate(now()).to_string() })),
+        Some(json!({ "code": login_code(&secret) })),
         Some(&partial),
     )
     .await;
@@ -694,7 +701,7 @@ async fn setup_activation_and_failures_are_audited_without_secrets(pool: PgPool)
         Some(&partial),
     )
     .await;
-    let code = totp(&secret).generate(now()).to_string();
+    let code = login_code(&secret);
     send(
         &app,
         Method::POST,
