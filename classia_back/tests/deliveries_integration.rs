@@ -38,6 +38,15 @@ fn files_dir() -> PathBuf {
     .clone()
 }
 
+/// Serializes the tests that write to the shared deliveries directory, so a
+/// test that counts its files never sees another test's uploads.
+async fn lock_files() -> tokio::sync::MutexGuard<'static, ()> {
+    static LOCK: std::sync::OnceLock<tokio::sync::Mutex<()>> = std::sync::OnceLock::new();
+    LOCK.get_or_init(|| tokio::sync::Mutex::new(()))
+        .lock()
+        .await
+}
+
 fn app(pool: PgPool) -> Router {
     files_dir();
     build_router(
@@ -290,6 +299,7 @@ async fn submit(f: &Fixture, activity_id: Uuid, cookie: &str, body: Vec<u8>) -> 
 
 #[sqlx::test(migrations = "./migrations")]
 async fn submit_creates_delivery_and_enforces_contract_rules(pool: PgPool) {
+    let _files = lock_files().await;
     let f = fixture(&pool).await;
     let valid = multipart(Some(("Entrega.DOCX", &docx("v1"))), None);
 
@@ -355,6 +365,7 @@ async fn submit_creates_delivery_and_enforces_contract_rules(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn submit_after_due_date_is_rejected_without_leaving_a_file(pool: PgPool) {
+    let _files = lock_files().await;
     let f = fixture(&pool).await;
     expire_activity(&pool, f.activity_id).await;
     let before = std::fs::read_dir(files_dir()).unwrap().count();
@@ -373,6 +384,7 @@ async fn submit_after_due_date_is_rejected_without_leaving_a_file(pool: PgPool) 
 
 #[sqlx::test(migrations = "./migrations")]
 async fn replace_increments_version_and_clears_a_previous_grade(pool: PgPool) {
+    let _files = lock_files().await;
     let f = fixture(&pool).await;
     let created = json_body(
         submit(
@@ -474,6 +486,7 @@ async fn replace_increments_version_and_clears_a_previous_grade(pool: PgPool) {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn grading_creates_corrects_and_audits_the_evaluation(pool: PgPool) {
+    let _files = lock_files().await;
     let f = fixture(&pool).await;
     let created = json_body(
         submit(
